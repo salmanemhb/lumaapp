@@ -167,6 +167,38 @@ async def get_current_user_info(
     }
 
 
+@router.get("/test-welcome-email")
+async def test_welcome_email(email: str, company: str = "Test Company"):
+    """
+    Test the full welcome email template
+    """
+    import resend
+    
+    logger.info(f"🧪 Testing full welcome email template to {email}")
+    
+    try:
+        response = EmailService.send_welcome_email(
+            to_email=email,
+            company_name=company,
+            language="es"
+        )
+        logger.info(f"✅ Welcome email sent! Response: {response}")
+        return {
+            "status": "success",
+            "message": f"Full welcome email sent to {email}",
+            "response": str(response)
+        }
+    except Exception as e:
+        logger.exception(f"❌ Failed to send welcome email")
+        import traceback
+        return {
+            "status": "error",
+            "message": str(e),
+            "error_type": type(e).__name__,
+            "traceback": traceback.format_exc()
+        }
+
+
 @router.get("/test-email-real")
 async def test_email_real(email: str):
     """
