@@ -8,6 +8,9 @@ from app.config import settings
 # Configure Resend
 resend.api_key = settings.RESEND_API_KEY
 
+# Sender email - use Resend's onboarding domain for testing
+SENDER_EMAIL = "Luma ESG <onboarding@resend.dev>"
+
 
 class EmailService:
     """Service for sending transactional emails via Resend"""
@@ -125,10 +128,10 @@ class EmailService:
         html_body = EmailService._get_base_template().format(content=content)
         
         return resend.Emails.send({
-            "from": f"Luma ESG <{settings.ADMIN_EMAIL}>",
+            "from": SENDER_EMAIL,
             "to": to_email,
             "subject": subject,
-            "html": html_body
+            "html": html_body,
         })
     
     @staticmethod
@@ -199,7 +202,7 @@ class EmailService:
         html_body = EmailService._get_base_template().format(content=content)
         
         return resend.Emails.send({
-            "from": f"Luma ESG <{settings.ADMIN_EMAIL}>",
+            "from": SENDER_EMAIL,
             "to": to_email,
             "subject": subject,
             "html": html_body
@@ -263,7 +266,7 @@ class EmailService:
         html_body = EmailService._get_base_template().format(content=content)
         
         return resend.Emails.send({
-            "from": f"Luma ESG <{settings.ADMIN_EMAIL}>",
+            "from": SENDER_EMAIL,
             "to": to_email,
             "subject": subject,
             "html": html_body
