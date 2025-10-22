@@ -163,6 +163,15 @@ export default function Dashboard() {
         }}
       />
 
+      {/* Demo Mode Banner */}
+      {user?.email === 'demo@luma.es' && (
+        <div className="bg-gradient-to-r from-purple-500 to-indigo-600 text-white py-2 px-4 text-center">
+          <p className="text-sm font-medium">
+            🎯 Demo Mode - All data shown is sample data for demonstration purposes
+          </p>
+        </div>
+      )}
+
       {/* Header */}
       <header className="border-b bg-card">
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
