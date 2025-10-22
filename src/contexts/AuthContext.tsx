@@ -53,16 +53,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return;
     }
 
-    // TODO: Connect to actual backend API
-    // For now, mock authentication
-    const mockUser: User = {
-      email,
-      companyName: "Demo Company",
+    // Connect to backend API
+    const response = await fetch('https://luma-final.onrender.com/api/auth/login', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email, password }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'Login failed');
+    }
+
+    const data = await response.json();
+    
+    const authenticatedUser: User = {
+      email: data.email || email,
+      companyName: data.company_name || "Unknown Company",
       approved: true,
     };
-    setUser(mockUser);
-    localStorage.setItem(AUTH_STORAGE_KEY, 'mock_token');
-    localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(mockUser));
+    
+    setUser(authenticatedUser);
+    localStorage.setItem(AUTH_STORAGE_KEY, data.access_token);
+    localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(authenticatedUser));
   };
 
   const logout = () => {
