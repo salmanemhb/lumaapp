@@ -16,6 +16,7 @@ export const JoinForm = ({ onSuccess }: JoinFormProps) => {
   const { language } = useLanguage();
   const { t } = useTranslation(language);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // Form state
   const [formData, setFormData] = useState({
     companyName: '',
     contactName: '',
