@@ -1,0 +1,4 @@
+fecha_factura,proveedor,kwh,importe_total,num_factura,periodo_inicio,periodo_fin,moneda
+2025-05-31,Iberdrola,12500,2500.45,ES-2025-00421,2025-05-01,2025-05-31,EUR
+2025-06-30,Endesa,10800,2150.30,ES-2025-00512,2025-06-01,2025-06-30,EUR
+2025-07-31,Naturgy,11200,2280.90,ES-2025-00623,2025-07-01,2025-07-31,EUR

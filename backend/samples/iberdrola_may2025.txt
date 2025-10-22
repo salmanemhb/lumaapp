@@ -1,0 +1,33 @@
+IBERDROLA CLIENTES, S.A.U.
+Plaza Euskadi, 5
+48009 Bilbao, España
+
+FACTURA DE ELECTRICIDAD
+
+Factura nº: ES-2025-00421
+Fecha de emisión: 02/06/2025
+Periodo de facturación: 01/05/2025 - 31/05/2025
+
+DATOS DEL CLIENTE
+Cliente: Empresa Demo S.L.
+NIF: B12345678
+Dirección: Calle Mayor 123, 28013 Madrid
+
+DETALLE DE CONSUMO
+
+Consumo total: 12.500 kWh
+Potencia contratada: 15 kW
+
+Factor de emisión: 0,231 kg CO2/kWh
+Emisiones totales: 2.887,5 kg CO2
+
+DETALLE ECONÓMICO
+
+Base imponible: 2.066,49 €
+IVA 21%: 433,96 €
+Importe total: 2.500,45 €
+
+Forma de pago: Domiciliación bancaria
+Fecha de cargo: 15/06/2025
+
+Para más información, visite www.iberdrola.es

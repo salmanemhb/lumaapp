@@ -1,0 +1,5 @@
+date,carrier,distance_km,weight_tons,mode,amount_eur
+2025-05-18,DHL,480,2.5,road,320.00
+2025-05-22,SEUR,350,1.8,road,245.00
+2025-05-25,MRW,520,3.2,road,385.00
+2025-05-28,DHL,680,4.1,road,510.00

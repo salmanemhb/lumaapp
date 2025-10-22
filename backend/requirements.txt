@@ -1,0 +1,49 @@
+# FastAPI Backend Requirements - Luma ESG Platform
+
+# Core Framework
+fastapi==0.109.0
+uvicorn[standard]==0.27.0
+python-multipart==0.0.6
+
+# Database & ORM
+sqlalchemy>=2.0.36
+psycopg2-binary==2.9.9
+
+# Supabase Client (updated versions)
+supabase>=2.22.1
+postgrest>=2.22.1
+storage3>=2.22.1
+supabase-auth>=2.22.1
+gotrue>=2.12.4
+supafunc>=0.10.2
+realtime>=2.22.1
+
+# HTTP Client
+httpx>=0.28.1
+websockets>=15.0.1
+
+# Authentication & Security
+passlib[bcrypt]==1.7.4
+python-jose[cryptography]==3.3.0
+
+# Email
+resend==0.7.0
+
+# OCR & Document Processing
+PyMuPDF>=1.26.5
+pdfplumber==0.10.3
+Pillow==10.2.0
+openpyxl==3.1.2
+
+# PDF Generation
+reportlab==4.0.9
+PyPDF2==3.0.1
+
+# Utils
+python-dotenv==1.0.0
+pydantic>=2.5.3
+pydantic-settings==2.1.0
+python-dateutil==2.8.2
+
+# Validation
+email-validator==2.1.0
