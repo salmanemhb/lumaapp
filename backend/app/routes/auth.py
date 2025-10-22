@@ -182,32 +182,43 @@ async def test_email():
     from app.services.email import SENDER_EMAIL
     logger.info(f"Sender Email: {SENDER_EMAIL}")
     
-    # Check Google Form URL
-    logger.info(f"Google Form URL: {settings.GOOGLE_FORM_URL}")
-    
-    # Try to send test email
+    # Try a VERY simple email first
     try:
-        logger.info("📧 Attempting to send test email...")
+        logger.info("📧 Attempting to send simple test email...")
         response = resend.Emails.send({
-            "from": SENDER_EMAIL,
-            "to": "test@resend.dev",  # Resend test email
+            "from": "onboarding@resend.dev",  # Use verified test email
+            "to": "delivered@resend.dev",  # Use Resend test inbox
             "subject": "Test Email from Luma ESG",
-            "html": "<h1>Test Email</h1><p>This is a test email from Luma ESG platform.</p>"
+            "html": "<p>This is a simple test.</p>"
         })
-        logger.info(f"✅ Test email sent! Response: {response}")
+        logger.info(f"✅ Simple test email sent! Response: {response}")
+        
+        # Now try with our sender
+        logger.info("📧 Attempting with our sender email...")
+        response2 = resend.Emails.send({
+            "from": SENDER_EMAIL,
+            "to": "delivered@resend.dev",
+            "subject": "Test with Luma sender",
+            "html": "<p>Test with our sender email.</p>"
+        })
+        logger.info(f"✅ Our sender works! Response: {response2}")
+        
         return {
             "status": "success",
-            "message": "Test email sent successfully",
+            "message": "Both tests passed",
+            "test1": str(response),
+            "test2": str(response2),
             "api_key_set": bool(resend.api_key),
-            "sender": SENDER_EMAIL,
-            "response": str(response)
+            "sender": SENDER_EMAIL
         }
     except Exception as e:
         logger.exception(f"❌ Test email failed")
+        import traceback
         return {
             "status": "error",
             "message": str(e),
             "error_type": type(e).__name__,
+            "traceback": traceback.format_exc(),
             "api_key_set": bool(resend.api_key),
             "sender": SENDER_EMAIL
         }
