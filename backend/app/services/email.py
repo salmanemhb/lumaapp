@@ -14,7 +14,7 @@ resend.api_key = settings.RESEND_API_KEY
 logger.info(f"Resend API configured successfully")
 
 # Sender email
-SENDER_EMAIL = "Luma ESG <lumaapi@resend.dev>"
+SENDER_EMAIL = "Luma ESG <getlumaos@gmail.com>"
 
 
 class EmailService:
