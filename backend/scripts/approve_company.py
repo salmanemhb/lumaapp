@@ -43,9 +43,9 @@ def approve_company(company_name: str, user_email: str, password: str = None):
             print(f"⚠️  Company '{company_name}' is already approved")
             return
         
-        # Generate password if not provided
+        # Generate password if not provided (bcrypt max is 72 bytes)
         if not password:
-            password = generate_random_password()
+            password = generate_random_password(length=12)  # Shorter to avoid bcrypt limit
             print(f"🔑 Generated password: {password}")
         
         # Check if user already exists
