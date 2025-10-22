@@ -20,8 +20,9 @@ except Exception as e:
     logger.exception(f"❌ Failed to configure Resend API: {e}")
 
 # Sender email - Using Resend verified test email
-# Sender email
-SENDER_EMAIL = "Luma ESG <hello@getluma.es>"
+# Sender email - Using Resend test email until getluma.es domain is verified
+# TODO: Change to "Luma ESG <hello@getluma.es>" after domain verification
+SENDER_EMAIL = "onboarding@resend.dev"
 
 
 class EmailService:
