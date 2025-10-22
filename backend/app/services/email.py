@@ -8,8 +8,8 @@ from app.config import settings
 # Configure Resend
 resend.api_key = settings.RESEND_API_KEY
 
-# Sender email - use Resend's onboarding domain for testing
-SENDER_EMAIL = "Luma ESG <onboarding@resend.dev>"
+# Sender email
+SENDER_EMAIL = "Luma ESG <getlumaos@gmail.com>"
 
 
 class EmailService:
