@@ -59,6 +59,7 @@ async def signup(request: SignupRequest, db: Session = Depends(get_db)):
     # Send welcome email with form link
     logger.info(f"📧 Sending welcome email to {request.contact_email}")
     email_sent = False
+    email_error = None
     try:
         from app.services.email import SENDER_EMAIL
         import resend
@@ -75,10 +76,14 @@ async def signup(request: SignupRequest, db: Session = Depends(get_db)):
         # Log error but don't fail the signup
         logger.exception(f"❌ Email sending failed")
         logger.error(f"Error type: {type(e).__name__}, Message: {str(e)}")
+        email_error = str(e)
     
     message = "Thank you for signing up! Please check your email for next steps."
     if not email_sent:
-        message += " (Note: There may be a delay in receiving the email)"
+        if "verified" in str(email_error).lower() or "audience" in str(email_error).lower():
+            message = f"Thank you for signing up! Your company has been registered. We'll contact you at {request.contact_email} within 24 hours."
+        else:
+            message += " (Note: There may be a delay in receiving the email)"
     
     return SignupResponse(
         message=message,
@@ -160,6 +165,43 @@ async def get_current_user_info(
         "role": current_user.role.value,
         "last_login": current_user.last_login
     }
+
+
+@router.get("/test-email-real")
+async def test_email_real(email: str):
+    """
+    Test sending to a real email address
+    """
+    import resend
+    from app.services.email import SENDER_EMAIL
+    
+    logger.info(f"🧪 Testing email to real address: {email}")
+    
+    try:
+        logger.info("📧 Attempting to send to real email...")
+        response = resend.Emails.send({
+            "from": SENDER_EMAIL,
+            "to": email,
+            "subject": "Test Email from Luma ESG",
+            "html": "<h1>Test</h1><p>This is a test email.</p>"
+        })
+        logger.info(f"✅ Email sent! Response: {response}")
+        return {
+            "status": "success",
+            "message": f"Email sent to {email}",
+            "response": str(response)
+        }
+    except Exception as e:
+        logger.exception(f"❌ Failed to send to {email}")
+        import traceback
+        return {
+            "status": "error",
+            "message": str(e),
+            "error_type": type(e).__name__,
+            "traceback": traceback.format_exc(),
+            "to": email,
+            "from": SENDER_EMAIL
+        }
 
 
 @router.get("/test-email")
