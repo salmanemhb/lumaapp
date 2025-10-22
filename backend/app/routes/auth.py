@@ -22,9 +22,12 @@ async def signup(request: SignupRequest, db: Session = Depends(get_db)):
     Company signup endpoint
     Creates pending company and sends welcome email with Google Form link
     """
+    logger.info(f"📝 Signup request - Company: {request.company_name}, Email: {request.contact_email}")
+    
     # Check if company already exists
     existing_company = db.query(Company).filter(Company.name == request.company_name).first()
     if existing_company:
+        logger.warning(f"Company {request.company_name} already exists")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Company name already registered. Please contact admin if this is an error."
@@ -33,6 +36,7 @@ async def signup(request: SignupRequest, db: Session = Depends(get_db)):
     # Check if email already used
     existing_email = db.query(Company).filter(Company.contact_email == request.contact_email).first()
     if existing_email:
+        logger.warning(f"Email {request.contact_email} already registered")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Email already registered."
@@ -46,26 +50,38 @@ async def signup(request: SignupRequest, db: Session = Depends(get_db)):
         approved=False
     )
     
+    logger.info(f"💾 Saving company to database...")
     db.add(company)
     db.commit()
     db.refresh(company)
+    logger.info(f"✅ Company saved with ID: {company.id}")
     
     # Send welcome email with form link
-    logger.info(f"Company {request.company_name} signed up successfully, sending welcome email to {request.contact_email}")
+    logger.info(f"📧 Sending welcome email to {request.contact_email}")
+    email_sent = False
     try:
-        EmailService.send_welcome_email(
+        from app.services.email import SENDER_EMAIL
+        import resend
+        logger.info(f"Email config check - Sender: {SENDER_EMAIL}, API Key set: {bool(resend.api_key)}")
+        
+        result = EmailService.send_welcome_email(
             to_email=request.contact_email,
             company_name=request.company_name,
             language="es"  # Default to Spanish for Spain-first
         )
-        logger.info(f"Welcome email sent successfully to {request.contact_email}")
+        logger.info(f"✅ Email sent! Resend response: {result}")
+        email_sent = True
     except Exception as e:
         # Log error but don't fail the signup
-        logger.exception(f"Failed to send welcome email to {request.contact_email}: {str(e)}")
-        logger.error(f"Email error details - Company: {request.company_name}, Error type: {type(e).__name__}")
+        logger.exception(f"❌ Email sending failed")
+        logger.error(f"Error type: {type(e).__name__}, Message: {str(e)}")
+    
+    message = "Thank you for signing up! Please check your email for next steps."
+    if not email_sent:
+        message += " (Note: There may be a delay in receiving the email)"
     
     return SignupResponse(
-        message="Thank you for signing up! Please check your email for next steps.",
+        message=message,
         company_id=company.id
     )
 
@@ -152,29 +168,46 @@ async def test_email():
     Test endpoint to verify email configuration
     """
     import resend
-    logger.info("🧪 Testing email configuration...")
-    logger.info(f"Resend API Key: {resend.api_key[:10] if resend.api_key else 'NOT SET'}...")
+    from app.config import settings
     
+    logger.info("🧪 Testing email configuration...")
+    
+    # Check API key
+    api_key_status = "✅ SET" if resend.api_key else "❌ NOT SET"
+    logger.info(f"Resend API Key: {api_key_status}")
+    if resend.api_key:
+        logger.info(f"API Key preview: {resend.api_key[:10]}...")
+    
+    # Check sender
+    from app.services.email import SENDER_EMAIL
+    logger.info(f"Sender Email: {SENDER_EMAIL}")
+    
+    # Check Google Form URL
+    logger.info(f"Google Form URL: {settings.GOOGLE_FORM_URL}")
+    
+    # Try to send test email
     try:
-        from app.services.email import SENDER_EMAIL
-        logger.info(f"Sender Email: {SENDER_EMAIL}")
-        
-        # Try to send a test email
-        response = EmailService.send_welcome_email(
-            to_email="test@example.com",
-            company_name="Test Company",
-            language="en"
-        )
-        logger.info(f"✅ Test email sent successfully: {response}")
+        logger.info("📧 Attempting to send test email...")
+        response = resend.Emails.send({
+            "from": SENDER_EMAIL,
+            "to": "test@resend.dev",  # Resend test email
+            "subject": "Test Email from Luma ESG",
+            "html": "<h1>Test Email</h1><p>This is a test email from Luma ESG platform.</p>"
+        })
+        logger.info(f"✅ Test email sent! Response: {response}")
         return {
             "status": "success",
-            "message": "Test email sent",
-            "response": response
+            "message": "Test email sent successfully",
+            "api_key_set": bool(resend.api_key),
+            "sender": SENDER_EMAIL,
+            "response": str(response)
         }
     except Exception as e:
-        logger.exception(f"❌ Test email failed: {str(e)}")
+        logger.exception(f"❌ Test email failed")
         return {
             "status": "error",
             "message": str(e),
-            "error_type": type(e).__name__
+            "error_type": type(e).__name__,
+            "api_key_set": bool(resend.api_key),
+            "sender": SENDER_EMAIL
         }
