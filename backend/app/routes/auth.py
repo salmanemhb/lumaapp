@@ -4,6 +4,7 @@ Authentication routes - signup and login
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from datetime import datetime
+import logging
 
 from app.database import get_db
 from app.models.database import Company, User, UserRole
@@ -11,6 +12,7 @@ from app.models.schemas import SignupRequest, SignupResponse, LoginRequest, Logi
 from app.services.auth import authenticate_user, create_access_token, hash_password
 from app.services.email import EmailService
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 
@@ -49,15 +51,18 @@ async def signup(request: SignupRequest, db: Session = Depends(get_db)):
     db.refresh(company)
     
     # Send welcome email with form link
+    logger.info(f"Company {request.company_name} signed up successfully, sending welcome email to {request.contact_email}")
     try:
         EmailService.send_welcome_email(
             to_email=request.contact_email,
             company_name=request.company_name,
             language="es"  # Default to Spanish for Spain-first
         )
+        logger.info(f"Welcome email sent successfully to {request.contact_email}")
     except Exception as e:
         # Log error but don't fail the signup
-        print(f"Failed to send welcome email: {e}")
+        logger.exception(f"Failed to send welcome email to {request.contact_email}: {str(e)}")
+        logger.error(f"Email error details - Company: {request.company_name}, Error type: {type(e).__name__}")
     
     return SignupResponse(
         message="Thank you for signing up! Please check your email for next steps.",

@@ -2,11 +2,16 @@
 Email service using Resend API
 """
 import resend
+import logging
 from typing import Dict, Optional, List
 from app.config import settings
 
+# Configure logging
+logger = logging.getLogger(__name__)
+
 # Configure Resend
 resend.api_key = settings.RESEND_API_KEY
+logger.info(f"Resend API configured successfully")
 
 # Sender email
 SENDER_EMAIL = "Luma ESG <getlumaos@gmail.com>"
@@ -127,12 +132,21 @@ class EmailService:
         
         html_body = EmailService._get_base_template().format(content=content)
         
-        return resend.Emails.send({
-            "from": SENDER_EMAIL,
-            "to": to_email,
-            "subject": subject,
-            "html": html_body,
-        })
+        logger.info(f"Attempting to send welcome email to {to_email} for company {company_name}")
+        logger.debug(f"Email details - From: {SENDER_EMAIL}, Subject: {subject}")
+        
+        try:
+            response = resend.Emails.send({
+                "from": SENDER_EMAIL,
+                "to": to_email,
+                "subject": subject,
+                "html": html_body,
+            })
+            logger.info(f"Successfully sent welcome email to {to_email}. Response: {response}")
+            return response
+        except Exception as e:
+            logger.exception(f"Failed to send welcome email to {to_email}: {str(e)}")
+            raise
     
     @staticmethod
     def send_credentials_email(
