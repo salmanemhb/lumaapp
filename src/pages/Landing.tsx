@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useTranslation } from '@/lib/i18n';
-import { CheckCircle, TrendingUp, Zap, ChevronDown } from 'lucide-react';
+import { CheckCircle, TrendingUp, Zap } from 'lucide-react';
 import heroBg from '@/assets/hero-bg.jpg';
 
 export default function Landing() {
@@ -49,22 +49,7 @@ export default function Landing() {
             >
               {t.hero.cta}
             </Button>
-            <Button 
-              variant="secondary" 
-              size="lg"
-              onClick={scrollToForm}
-            >
-              {t.hero.learnMore}
-            </Button>
           </div>
-          
-          <button 
-            onClick={scrollToForm}
-            className="absolute bottom-8 left-1/2 -translate-x-1/2 animate-bounce"
-            aria-label="Scroll down"
-          >
-            <ChevronDown className="h-8 w-8 text-foreground/60" />
-          </button>
         </div>
       </section>
 
