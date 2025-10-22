@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useTranslation } from '@/lib/i18n';
 import { toast } from 'sonner';
+import { config } from '@/config';
 
 interface JoinFormProps {
   onSuccess: () => void;
@@ -30,7 +31,7 @@ export const JoinForm = ({ onSuccess }: JoinFormProps) => {
     setIsSubmitting(true);
 
     try {
-      const response = await fetch('https://luma-final.onrender.com/api/auth/signup', {
+      const response = await fetch(`${config.apiUrl}/api/auth/signup`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

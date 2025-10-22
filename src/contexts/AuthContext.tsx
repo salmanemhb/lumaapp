@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { config } from '@/config';
 
 interface User {
   email: string;
@@ -54,7 +55,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     // Connect to backend API
-    const response = await fetch('https://luma-final.onrender.com/api/auth/login', {
+    const response = await fetch(`${config.apiUrl}/api/auth/login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
