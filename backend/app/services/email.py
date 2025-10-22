@@ -10,8 +10,14 @@ from app.config import settings
 logger = logging.getLogger(__name__)
 
 # Configure Resend
-resend.api_key = settings.RESEND_API_KEY
-logger.info(f"Resend API configured successfully")
+try:
+    resend.api_key = settings.RESEND_API_KEY
+    if not resend.api_key or resend.api_key == "":
+        logger.error("❌ RESEND_API_KEY is empty or not set!")
+    else:
+        logger.info(f"✅ Resend API key configured: {resend.api_key[:10]}...")
+except Exception as e:
+    logger.exception(f"❌ Failed to configure Resend API: {e}")
 
 # Sender email
 SENDER_EMAIL = "Luma ESG <getlumaos@gmail.com>"

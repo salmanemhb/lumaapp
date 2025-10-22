@@ -4,8 +4,16 @@ Version: 1.0.1 - Fixed pandas import issues
 """
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+import logging
 from app.config import settings
 from app.routes import auth, files, dashboard, reports
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 # Create FastAPI app
 app = FastAPI(
@@ -35,10 +43,13 @@ app.include_router(reports.router, prefix="/api")
 @app.on_event("startup")
 async def startup_event():
     """Initialize database on startup"""
-    print("🚀 Starting Luma ESG API...")
-    print(f"Environment: {settings.ENVIRONMENT}")
-    print(f"Allowed origins: {settings.allowed_origins_list}")
-    print("✅ Database connection ready")
+    logger.info("🚀 Starting Luma ESG API...")
+    logger.info(f"Environment: {settings.ENVIRONMENT}")
+    logger.info(f"Allowed origins: {settings.allowed_origins_list}")
+    logger.info(f"RESEND_API_KEY configured: {settings.RESEND_API_KEY[:10]}..." if settings.RESEND_API_KEY else "❌ RESEND_API_KEY NOT SET")
+    logger.info(f"Admin Email: {settings.ADMIN_EMAIL}")
+    logger.info(f"Google Form URL: {settings.GOOGLE_FORM_URL}")
+    logger.info("✅ Database connection ready")
 
 
 @app.get("/")

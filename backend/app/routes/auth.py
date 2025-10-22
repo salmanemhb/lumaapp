@@ -144,3 +144,37 @@ async def get_current_user_info(
         "role": current_user.role.value,
         "last_login": current_user.last_login
     }
+
+
+@router.get("/test-email")
+async def test_email():
+    """
+    Test endpoint to verify email configuration
+    """
+    import resend
+    logger.info("🧪 Testing email configuration...")
+    logger.info(f"Resend API Key: {resend.api_key[:10] if resend.api_key else 'NOT SET'}...")
+    
+    try:
+        from app.services.email import SENDER_EMAIL
+        logger.info(f"Sender Email: {SENDER_EMAIL}")
+        
+        # Try to send a test email
+        response = EmailService.send_welcome_email(
+            to_email="test@example.com",
+            company_name="Test Company",
+            language="en"
+        )
+        logger.info(f"✅ Test email sent successfully: {response}")
+        return {
+            "status": "success",
+            "message": "Test email sent",
+            "response": response
+        }
+    except Exception as e:
+        logger.exception(f"❌ Test email failed: {str(e)}")
+        return {
+            "status": "error",
+            "message": str(e),
+            "error_type": type(e).__name__
+        }
