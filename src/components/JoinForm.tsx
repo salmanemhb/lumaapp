@@ -29,11 +29,23 @@ export const JoinForm = ({ onSuccess }: JoinFormProps) => {
     setIsSubmitting(true);
 
     try {
-      // TODO: Connect to actual backend API endpoint
-      // await axios.post('/api/public/join_beta', formData);
-      
-      // Mock delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const response = await fetch('https://luma-final.onrender.com/api/auth/signup', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          company_name: formData.companyName,
+          sector: formData.country, // Using country as sector for now
+          contact_email: formData.email,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.detail || 'Signup failed');
+      }
       
       onSuccess();
       sessionStorage.setItem('show_confirmation_banner', 'true');
@@ -47,7 +59,7 @@ export const JoinForm = ({ onSuccess }: JoinFormProps) => {
         message: '',
       });
     } catch (error) {
-      toast.error('Something went wrong. Please try again.');
+      toast.error(error instanceof Error ? error.message : 'Something went wrong. Please try again.');
       console.error('Join form error:', error);
     } finally {
       setIsSubmitting(false);
