@@ -121,6 +121,9 @@ class EmailService:
             button_text = "Complete Form"
             closing = "Luma Team"
         
+        # Get the Google Form URL
+        form_url = settings.GOOGLE_FORM_URL
+        
         content = f"""
 <div class="header">
     <h1>🌱 Luma ESG</h1>
@@ -130,7 +133,7 @@ class EmailService:
     <p>{intro}</p>
     <p>{instruction}</p>
     <p style="text-align: center;">
-        <a href="{settings.GOOGLE_FORM_URL}" class="button">{button_text}</a>
+        <a href="{form_url}" class="button">{button_text}</a>
     </p>
     <p>{verification_text}</p>
     <p>{closing}</p>
