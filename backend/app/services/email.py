@@ -35,28 +35,28 @@ class EmailService:
 <head>
     <meta charset="UTF-8">
     <style>
-        body {
+        body {{
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             line-height: 1.6;
             color: #333;
             max-width: 600px;
             margin: 0 auto;
             padding: 20px;
-        }
-        .header {
+        }}
+        .header {{
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             padding: 30px;
             text-align: center;
             border-radius: 10px 10px 0 0;
-        }
-        .content {
+        }}
+        .content {{
             background: #f9fafb;
             padding: 30px;
             border: 1px solid #e5e7eb;
             border-top: none;
-        }
-        .button {
+        }}
+        .button {{
             display: inline-block;
             background: #667eea;
             color: white !important;
@@ -65,20 +65,20 @@ class EmailService:
             border-radius: 6px;
             margin: 15px 0;
             font-weight: 600;
-        }
-        .credentials {
+        }}
+        .credentials {{
             background: white;
             padding: 20px;
             border-left: 4px solid #667eea;
             margin: 20px 0;
             border-radius: 4px;
-        }
-        .footer {
+        }}
+        .footer {{
             text-align: center;
             margin-top: 30px;
             color: #6b7280;
             font-size: 14px;
-        }
+        }}
     </style>
 </head>
 <body>
