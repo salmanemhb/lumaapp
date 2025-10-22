@@ -21,10 +21,13 @@ export default function Dashboard() {
   const { language } = useLanguage();
   const { t } = useTranslation(language);
   const [showGuide, setShowGuide] = useState(false);
-  const [hasData, setHasData] = useState(true); // Set to true to show dashboard with data
   const [isLoading, setIsLoading] = useState(true);
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
   const [lastReportDate, setLastReportDate] = useState<Date | null>(null);
+  
+  // Check if user is demo or real user
+  const isDemo = user?.email === 'demo@luma.es';
+  const hasData = isDemo; // Only demo has data, real users start empty
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
