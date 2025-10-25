@@ -1,0 +1,42 @@
+IBERDROLA CLIENTES, S.A.U.
+Tomás Redondo, 1
+28033 Madrid
+España
+CIF: A95758389
+
+FACTURA DE ELECTRICIDAD
+
+Número de Factura: 2025/10/001234
+Fecha de Emisión: 15/10/2025
+Período de Facturación: 01/09/2025 - 30/09/2025
+
+DATOS DEL CLIENTE
+-------------------------------------------
+Nombre: ZARA retail
+CIF: B3406e06-eb08-46ac-be9e-13556893f79d
+Dirección de Suministro: Calle Ejemplo 123, Madrid
+CUPS: ES0031406578945612AB1F
+
+CONSUMO DE ENERGÍA
+-------------------------------------------
+Consumo Total: 2,450 kWh
+Precio Energía: 0.15 €/kWh
+
+DETALLE DE FACTURACIÓN
+-------------------------------------------
+Término de Potencia         45.00 €
+Término de Energía         367.50 €
+Impuesto Eléctrico (5.1%)   21.04 €
+IVA (21%)                   90.85 €
+-------------------------------------------
+TOTAL A PAGAR              524.39 €
+
+Forma de pago: Domiciliación bancaria
+Fecha de cargo: 25/10/2025
+
+Para cualquier consulta, contacte con:
+Atención al Cliente: 900 225 235
+www.iberdrola.es
+
+-------------------------------------------
+Esta factura es válida sin firma ni sello

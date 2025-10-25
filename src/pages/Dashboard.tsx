@@ -15,6 +15,8 @@ import { useTranslation } from '@/lib/i18n';
 import { toast } from 'sonner';
 import lumaLogo from '@/assets/luma-logo.png';
 
+const API_URL = import.meta.env.VITE_API_URL || 'https://luma-final.onrender.com';
+
 export default function Dashboard() {
   const { logout, user, isAuthenticated, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
@@ -24,10 +26,12 @@ export default function Dashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
   const [lastReportDate, setLastReportDate] = useState<Date | null>(null);
+  const [uploads, setUploads] = useState<any[]>([]);
+  const [dashboardData, setDashboardData] = useState<any>(null);
   
   // Check if user is demo or real user
   const isDemo = user?.email === 'demo@luma.es';
-  const hasData = isDemo; // Only demo has data, real users start empty
+  const hasData = uploads.length > 0 || isDemo;
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -37,17 +41,53 @@ export default function Dashboard() {
   }, [isAuthenticated, authLoading, navigate, t]);
 
   useEffect(() => {
-    // Simulate loading dashboard data
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-      // Check if this is first visit for guide
-      const hasSeenGuide = localStorage.getItem('luma_guide_seen');
-      if (!hasSeenGuide && hasData) {
-        setShowGuide(true);
+    const loadDashboardData = async () => {
+      if (!isAuthenticated || authLoading) return;
+
+      try {
+        const token = localStorage.getItem('access_token');
+        
+        // Fetch uploads
+        const uploadsResponse = await fetch(`${API_URL}/api/files/uploads`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+        
+        if (uploadsResponse.ok) {
+          const uploadsData = await uploadsResponse.json();
+          setUploads(uploadsData);
+        }
+
+        // Fetch dashboard summary
+        const dashboardResponse = await fetch(`${API_URL}/api/dashboard`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+        
+        if (dashboardResponse.ok) {
+          const data = await dashboardResponse.json();
+          setDashboardData(data);
+        }
+      } catch (error) {
+        console.error('Failed to load dashboard data:', error);
+      } finally {
+        setIsLoading(false);
+        // Check if this is first visit for guide
+        const hasSeenGuide = localStorage.getItem('luma_guide_seen');
+        if (!hasSeenGuide && (uploads.length > 0 || isDemo)) {
+          setShowGuide(true);
+        }
       }
-    }, 800);
-    return () => clearTimeout(timer);
-  }, [hasData]);
+    };
+
+    loadDashboardData();
+    
+    // Refresh data every 30 seconds
+    const interval = setInterval(loadDashboardData, 30000);
+    return () => clearInterval(interval);
+  }, [isAuthenticated, authLoading, isDemo]);
 
   const handleLogout = () => {
     logout();
@@ -83,8 +123,8 @@ export default function Dashboard() {
     },
   ];
 
-  // Mock data
-  const monthlyData = [
+  // Mock data (used for demo or when no real data available)
+  const monthlyData = dashboardData?.monthly_emissions || [
     { month: 'Jan', emissions: 120 },
     { month: 'Feb', emissions: 150 },
     { month: 'Mar', emissions: 135 },
@@ -93,24 +133,26 @@ export default function Dashboard() {
     { month: 'Jun', emissions: 140 },
   ];
 
-  const scopeData = [
+  const scopeData = dashboardData?.scope_breakdown || [
     { name: t.dashboard.scope1, value: 450, color: 'hsl(var(--sage))' },
     { name: t.dashboard.scope2, value: 320, color: 'hsl(var(--gold))' },
     { name: t.dashboard.scope3, value: 180, color: 'hsl(var(--accent))' },
   ];
 
-  const recentFiles = [
-    { name: 'electricity_bill_june.pdf', status: 'processed', emissions: 45.2, date: '2025-10-22' },
-    { name: 'gas_invoice_june.pdf', status: 'processed', emissions: 32.8, date: '2025-10-22' },
-    { name: 'transport_data.csv', status: 'processing', emissions: null, date: '2025-10-23' },
-    { name: 'water_bill_may.pdf', status: 'processed', emissions: 12.5, date: '2025-10-21' },
-  ];
+  const recentFiles = uploads.slice(0, 4).map((upload: any) => ({
+    name: upload.file_name,
+    status: upload.status,
+    emissions: upload.co2e_kg,
+    date: upload.uploaded_at,
+  }));
 
-  const currentMonthEmissions = 950;
-  const lastMonthEmissions = 1020;
-  const percentChange = ((currentMonthEmissions - lastMonthEmissions) / lastMonthEmissions * 100).toFixed(1);
+  const currentMonthEmissions = dashboardData?.total_emissions_kg || (isDemo ? 950 : 0);
+  const lastMonthEmissions = dashboardData?.last_month_emissions_kg || (isDemo ? 1020 : 0);
+  const percentChange = lastMonthEmissions > 0 
+    ? ((currentMonthEmissions - lastMonthEmissions) / lastMonthEmissions * 100).toFixed(1)
+    : '0.0';
   const isDecrease = currentMonthEmissions < lastMonthEmissions;
-  const progress = 78; // Mock progress percentage
+  const progress = dashboardData?.csrd_readiness_pct || (isDemo ? 78 : 0);
 
   if (authLoading || isLoading) {
     return (
@@ -414,32 +456,40 @@ export default function Dashboard() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {recentFiles.map((file, index) => (
-                        <TableRow key={index}>
-                          <TableCell className="flex items-center gap-2">
-                            <FileText className="h-4 w-4 text-muted-foreground" />
-                            {file.name}
-                          </TableCell>
-                          <TableCell>
-                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                              file.status === 'processed' 
-                                ? 'bg-primary/10 text-primary' 
-                                : 'bg-muted text-muted-foreground'
-                            }`}>
-                              {file.status === 'processed' ? t.dashboard.processed : t.dashboard.processing}
-                            </span>
-                          </TableCell>
-                          <TableCell className="text-right font-medium">
-                            {file.emissions ? `${file.emissions} kg` : '—'}
-                          </TableCell>
-                          <TableCell className="text-right text-sm text-muted-foreground">
-                            {new Date(file.date).toLocaleDateString(language === 'es' ? 'es-ES' : 'en-US', {
-                              month: 'short',
-                              day: 'numeric',
-                            })}
+                      {recentFiles.length > 0 ? (
+                        recentFiles.map((file: any, index: number) => (
+                          <TableRow key={index}>
+                            <TableCell className="flex items-center gap-2">
+                              <FileText className="h-4 w-4 text-muted-foreground" />
+                              {file.name}
+                            </TableCell>
+                            <TableCell>
+                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                file.status === 'processed' 
+                                  ? 'bg-primary/10 text-primary' 
+                                  : 'bg-muted text-muted-foreground'
+                              }`}>
+                                {file.status === 'processed' ? t.dashboard.processed : t.dashboard.processing}
+                              </span>
+                            </TableCell>
+                            <TableCell className="text-right font-medium">
+                              {file.emissions ? `${file.emissions.toFixed(2)} kg` : '—'}
+                            </TableCell>
+                            <TableCell className="text-right text-sm text-muted-foreground">
+                              {file.date ? new Date(file.date).toLocaleDateString(language === 'es' ? 'es-ES' : 'en-US', {
+                                month: 'short',
+                                day: 'numeric',
+                              }) : '—'}
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
+                            No uploads yet. Upload your first file to get started!
                           </TableCell>
                         </TableRow>
-                      ))}
+                      )}
                     </TableBody>
                   </Table>
                 </div>

@@ -1,0 +1,2 @@
+invoice_number,date,supplier,category,period_start,period_end,usage_value,usage_unit,amount_total,currency,customer_name,customer_id
+2025-GAS-5678,2025-10-10,Gas Natural Fenosa,natural_gas,2025-09-01,2025-09-30,850,m3,1245.80,EUR,ZARA retail,b3406e06-eb08-46ac-be9e-13556893f79d
