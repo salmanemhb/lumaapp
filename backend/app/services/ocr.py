@@ -524,10 +524,10 @@ class DocumentParser:
             'date': ['fecha', 'fecha_factura', 'posting_date', 'date'],
             'supplier': ['proveedor', 'vendor', 'empresa', 'supplier'],
             'category': ['categoria', 'tipo_gasto', 'naturaleza', 'category'],
-            'usage_value': ['consumo', 'kwh', 'm3', 'litros', 'l', 'distancia_km', 'km', 'usage'],
-            'usage_unit': ['unidad', 'unidad_consumo', 'uom', 'unit'],
-            'amount_total': ['importe_total', 'total', 'importe', 'amount'],
-            'invoice_number': ['num_factura', 'factura', 'invoice'],
+            'usage_value': ['consumo', 'kwh', 'm3', 'litros', 'l', 'distancia_km', 'km', 'usage', 'usage_value'],
+            'usage_unit': ['unidad', 'unidad_consumo', 'uom', 'unit', 'usage_unit'],
+            'amount_total': ['importe_total', 'total', 'importe', 'amount', 'amount_total'],
+            'invoice_number': ['num_factura', 'factura', 'invoice', 'invoice_number'],
             'scope': ['alcance', 'scope'],
         }
         
