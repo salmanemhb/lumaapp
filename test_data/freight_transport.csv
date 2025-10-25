@@ -1,0 +1,11 @@
+invoice_number,supplier,invoice_date,origin,destination,distance_km,weight_kg,amount_total,currency
+FRT-2025-001,DHL Express,2025-01-10,Madrid,Barcelona,620,1500,450.00,EUR
+FRT-2025-002,Seur,2025-01-15,Barcelona,Valencia,350,2200,380.50,EUR
+FRT-2025-003,MRW,2025-02-05,Madrid,Sevilla,530,1800,420.75,EUR
+FRT-2025-004,DHL Express,2025-02-20,Valencia,Bilbao,550,1600,435.80,EUR
+FRT-2025-005,Correos Express,2025-03-08,Madrid,Zaragoza,320,2500,390.25,EUR
+FRT-2025-006,Seur,2025-03-18,Barcelona,Málaga,1000,1900,680.40,EUR
+FRT-2025-007,MRW,2025-04-12,Madrid,Lisboa,630,2100,510.30,EUR
+FRT-2025-008,DHL Express,2025-04-25,Valencia,Madrid,360,1700,365.90,EUR
+FRT-2025-009,Seur,2025-05-10,Barcelona,Bilbao,620,2300,495.50,EUR
+FRT-2025-010,Correos Express,2025-05-22,Madrid,Barcelona,620,1400,425.60,EUR

@@ -1,0 +1,11 @@
+invoice_number,supplier,category,invoice_date,period_start,period_end,usage_value,usage_unit,amount_total,currency
+UTIL-E-001,Iberdrola,Electricity,2025-01-15,2024-12-01,2024-12-31,1250,kWh,289.50,EUR
+UTIL-G-001,Naturgy Gas,Gas,2025-01-25,2024-12-01,2024-12-31,450,m3,380.25,EUR
+UTIL-W-001,Canal Isabel II,Water,2025-01-20,2024-12-01,2024-12-31,85,m3,95.20,EUR
+UTIL-E-002,Endesa,Electricity,2025-02-10,2025-01-01,2025-01-31,1100,kWh,255.10,EUR
+UTIL-G-002,Gas Natural,Gas,2025-02-20,2025-01-01,2025-01-31,520,m3,439.60,EUR
+UTIL-E-003,EDP España,Electricity,2025-03-12,2025-02-01,2025-02-28,1050,kWh,243.65,EUR
+UTIL-G-003,Repsol Gas,Gas,2025-03-15,2025-02-01,2025-02-28,480,m3,405.60,EUR
+UTIL-W-002,Canal Isabel II,Water,2025-03-10,2025-02-01,2025-02-28,92,m3,102.40,EUR
+UTIL-E-004,Naturgy,Electricity,2025-04-08,2025-03-01,2025-03-31,1200,kWh,278.40,EUR
+UTIL-G-004,Naturgy Gas,Gas,2025-04-10,2025-03-01,2025-03-31,390,m3,329.55,EUR

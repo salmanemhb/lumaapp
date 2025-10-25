@@ -1,0 +1,13 @@
+invoice_number,supplier,date,fuel_type,liters,price_per_liter,amount_total,currency,location
+FUEL-2025-001,Repsol,2025-01-05,Diesel,850,1.45,1232.50,EUR,Madrid Centro
+FUEL-2025-002,Cepsa,2025-01-12,Gasolina 95,620,1.55,961.00,EUR,Barcelona Nord
+FUEL-2025-003,BP,2025-01-20,Diesel,920,1.47,1352.40,EUR,Valencia
+FUEL-2025-004,Repsol,2025-02-03,Diesel,780,1.46,1138.80,EUR,Sevilla
+FUEL-2025-005,Galp,2025-02-15,Gasolina 98,550,1.65,907.50,EUR,Lisboa
+FUEL-2025-006,Cepsa,2025-02-28,Diesel,890,1.48,1317.20,EUR,Bilbao
+FUEL-2025-007,BP,2025-03-10,Diesel,950,1.44,1368.00,EUR,Zaragoza
+FUEL-2025-008,Repsol,2025-03-22,Gasolina 95,710,1.58,1121.80,EUR,Málaga
+FUEL-2025-009,Cepsa,2025-04-05,Diesel,830,1.49,1236.70,EUR,Valladolid
+FUEL-2025-010,Galp,2025-04-18,Diesel,900,1.47,1323.00,EUR,Porto
+FUEL-2025-011,BP,2025-05-02,Gasolina 95,640,1.60,1024.00,EUR,Granada
+FUEL-2025-012,Repsol,2025-05-20,Diesel,870,1.50,1305.00,EUR,Murcia
