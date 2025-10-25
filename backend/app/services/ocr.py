@@ -554,9 +554,10 @@ class DocumentParser:
             extraction_attempts.append({"field": "category", "status": "detected", "value": "electricity"})
             
             usage_patterns = [
-                r'([\d\.\,]+)\s*kWh',
-                r'Consumo.*?:?\s*([\d\.\,]+)\s*kWh',
-                r'Energy\s*Consumption:?\s*([\d\.\,]+)\s*kWh'
+                r'([\d\s\.\,]+)\s*kWh',
+                r'Consumo.*?:?\s*([\d\s\.\,]+)\s*kWh',
+                r'Energy\s*Consumption:?\s*([\d\s\.\,]+)\s*kWh',
+                r'energ[ií]a\s*activa.*?:?\s*([\d\s\.\,]+)\s*kWh'
             ]
             usage_found = False
             for pattern in usage_patterns:
@@ -596,9 +597,9 @@ class DocumentParser:
             extraction_attempts.append({"field": "category", "status": "detected", "value": "gas"})
             
             usage_patterns = [
-                r'([\d\.\,]+)\s*m[³3]',
-                r'Consumo.*?:?\s*([\d\.\,]+)\s*m[³3]',
-                r'Volume:?\s*([\d\.\,]+)\s*m[³3]'
+                r'([\d\s\.\,]+)\s*m[³3]',
+                r'Consumo.*?:?\s*([\d\s\.\,]+)\s*m[³3]',
+                r'Volume:?\s*([\d\s\.\,]+)\s*m[³3]'
             ]
             usage_found = False
             for pattern in usage_patterns:
@@ -637,9 +638,9 @@ class DocumentParser:
             extraction_attempts.append({"field": "category", "status": "detected", "value": "fuel"})
             
             usage_patterns = [
-                r'([\d\.\,]+)\s*(Litros|L)\b',
-                r'Volume:?\s*([\d\.\,]+)\s*L',
-                r'Cantidad:?\s*([\d\.\,]+)\s*Litros'
+                r'([\d\s\.\,]+)\s*(Litros|L)\b',
+                r'Volume:?\s*([\d\s\.\,]+)\s*L',
+                r'Cantidad:?\s*([\d\s\.\,]+)\s*Litros'
             ]
             usage_found = False
             for pattern in usage_patterns:
@@ -844,7 +845,7 @@ class DocumentParser:
             'date': ['fecha', 'fecha_factura', 'posting_date', 'date'],
             'supplier': ['proveedor', 'vendor', 'empresa', 'supplier'],
             'category': ['categoria', 'tipo_gasto', 'naturaleza', 'category'],
-            'usage_value': ['consumo', 'kwh', 'm3', 'litros', 'l', 'distancia_km', 'km', 'usage', 'usage_value'],
+            'usage_value': ['consumo', 'kwh', 'm3', 'litros', 'liters', 'l', 'distancia_km', 'km', 'usage', 'usage_value'],
             'usage_unit': ['unidad', 'unidad_consumo', 'uom', 'unit', 'usage_unit'],
             'amount_total': ['importe_total', 'total', 'importe', 'amount', 'amount_total'],
             'invoice_number': ['num_factura', 'factura', 'invoice', 'invoice_number'],
