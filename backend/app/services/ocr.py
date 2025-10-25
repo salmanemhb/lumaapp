@@ -186,23 +186,41 @@ class DocumentParser:
     
     @classmethod
     def parse_pdf_invoice(cls, file_path: str) -> UploadRecord:
-        """Parse PDF invoice (Spanish utilities)"""
+        """Parse PDF invoice (Spanish utilities) with detailed extraction logging"""
         text, metadata = cls.extract_text_from_pdf(file_path)
+        
+        # Add extraction log for debugging
+        extraction_log = {
+            "ocr_text_length": len(text),
+            "ocr_text_preview": text[:500] if text else "No text extracted",
+            "patterns_tried": [],
+            "fields_found": [],
+            "fields_missing": []
+        }
         
         # Detect supplier
         supplier = cls.detect_supplier(text)
+        extraction_log["patterns_tried"].append({"field": "supplier", "result": supplier or "Not detected"})
         
         # Route to specific parser based on supplier
         if supplier == "Iberdrola":
-            return cls.parse_iberdrola_pdf(text, metadata)
+            result = cls.parse_iberdrola_pdf(text, metadata)
         elif supplier == "Endesa":
-            return cls.parse_endesa_pdf(text, metadata)
+            result = cls.parse_endesa_pdf(text, metadata)
         elif supplier == "Naturgy":
-            return cls.parse_naturgy_pdf(text, metadata)
+            result = cls.parse_naturgy_pdf(text, metadata)
         elif supplier in ["Repsol", "Cepsa", "Galp", "Shell", "BP"]:
-            return cls.parse_fuel_pdf(text, metadata, supplier)
+            result = cls.parse_fuel_pdf(text, metadata, supplier)
         else:
-            return cls.parse_generic_pdf(text, metadata)
+            result = cls.parse_generic_pdf(text, metadata)
+        
+        # Add extraction log to result
+        if not result.meta:
+            result.meta = {}
+        if isinstance(result.meta, dict):
+            result.meta["extraction_log"] = extraction_log
+        
+        return result
     
     @classmethod
     def parse_iberdrola_pdf(cls, text: str, metadata: Dict) -> UploadRecord:
@@ -469,15 +487,16 @@ class DocumentParser:
     
     @classmethod
     def parse_generic_pdf(cls, text: str, metadata: Dict) -> UploadRecord:
-        """Generic PDF parser for unrecognized suppliers"""
+        """Generic PDF parser for unrecognized suppliers with detailed logging"""
         supplier = cls.detect_supplier(text)
         record = UploadRecord(
             supplier=supplier,
-            meta=metadata,
+            meta=metadata if metadata else {},
             confidence=0.3
         )
         
         fields_found = 0
+        extraction_attempts = []  # Track what we tried
         
         # Invoice number
         invoice_patterns = [
@@ -485,12 +504,17 @@ class DocumentParser:
             r'N[ºo]\s*Factura:?\s*([A-Z0-9\-\/\.]+)',
             r'Factura:?\s*([A-Z0-9\-\/\.]+)'
         ]
+        invoice_found = False
         for pattern in invoice_patterns:
             match = re.search(pattern, text, re.IGNORECASE)
             if match:
                 record.invoice_number = match.group(1).strip()
                 fields_found += 1
+                invoice_found = True
+                extraction_attempts.append({"field": "invoice_number", "status": "found", "value": record.invoice_number})
                 break
+        if not invoice_found:
+            extraction_attempts.append({"field": "invoice_number", "status": "missing", "patterns_tried": len(invoice_patterns)})
         
         # Date (try multiple formats)
         date_patterns = [
@@ -498,12 +522,15 @@ class DocumentParser:
             r'Fecha:?\s*(\d{2}[\/\-]\d{2}[\/\-]\d{4})',
             r'(\d{2}[\/\-]\d{2}[\/\-]\d{4})'
         ]
+        date_found = False
         for pattern in date_patterns:
             match = re.search(pattern, text, re.IGNORECASE)
             if match:
                 try:
                     record.issue_date = cls.parse_spanish_date(match.group(1))
                     fields_found += 1
+                    date_found = True
+                    extraction_attempts.append({"field": "date", "status": "found", "value": str(record.issue_date)})
                     break
                 except:
                     pass
@@ -524,52 +551,202 @@ class DocumentParser:
         if re.search(r'electric|kWh|energ[ií]a', text, re.IGNORECASE):
             record.category = DocumentCategory.ELECTRICITY
             record.scope = 2
-            usage_match = re.search(r'([\d\.\,]+)\s*kWh', text, re.IGNORECASE)
-            if usage_match:
-                record.usage_value = cls.normalize_spanish_number(usage_match.group(1))
-                record.usage_unit = "kWh"
-                record.emission_factor = settings.ELECTRICITY_FACTOR_KG_PER_KWH
-                fields_found += 1
+            extraction_attempts.append({"field": "category", "status": "detected", "value": "electricity"})
+            
+            usage_patterns = [
+                r'([\d\.\,]+)\s*kWh',
+                r'Consumo.*?:?\s*([\d\.\,]+)\s*kWh',
+                r'Energy\s*Consumption:?\s*([\d\.\,]+)\s*kWh'
+            ]
+            usage_found = False
+            for pattern in usage_patterns:
+                usage_match = re.search(pattern, text, re.IGNORECASE)
+                if usage_match:
+                    record.usage_value = cls.normalize_spanish_number(usage_match.group(1))
+                    record.usage_unit = "kWh"
+                    record.emission_factor = settings.ELECTRICITY_FACTOR_KG_PER_KWH
+                    fields_found += 1
+                    usage_found = True
+                    extraction_attempts.append({
+                        "field": "usage_value",
+                        "status": "found",
+                        "value": record.usage_value,
+                        "pattern": pattern,
+                        "matched_text": usage_match.group(0)
+                    })
+                    break
+            
+            if not usage_found:
+                # Find sample text around kWh for debugging
+                sample_text = ""
+                idx = text.lower().find('kwh')
+                if idx != -1:
+                    sample_text = text[max(0, idx-80):min(len(text), idx+50)]
+                extraction_attempts.append({
+                    "field": "usage_value",
+                    "status": "missing",
+                    "patterns_tried": usage_patterns,
+                    "text_sample": sample_text or text[:200]
+                })
         
         # Gas
         elif re.search(r'gas|m³|m3', text, re.IGNORECASE):
             record.category = DocumentCategory.NATURAL_GAS
             record.scope = 1
-            usage_match = re.search(r'([\d\.\,]+)\s*m[³3]', text, re.IGNORECASE)
-            if usage_match:
-                record.usage_value = cls.normalize_spanish_number(usage_match.group(1))
-                record.usage_unit = "m3"
-                record.emission_factor = settings.GAS_FACTOR_KG_PER_M3
-                fields_found += 1
+            extraction_attempts.append({"field": "category", "status": "detected", "value": "gas"})
+            
+            usage_patterns = [
+                r'([\d\.\,]+)\s*m[³3]',
+                r'Consumo.*?:?\s*([\d\.\,]+)\s*m[³3]',
+                r'Volume:?\s*([\d\.\,]+)\s*m[³3]'
+            ]
+            usage_found = False
+            for pattern in usage_patterns:
+                usage_match = re.search(pattern, text, re.IGNORECASE)
+                if usage_match:
+                    record.usage_value = cls.normalize_spanish_number(usage_match.group(1))
+                    record.usage_unit = "m3"
+                    record.emission_factor = settings.GAS_FACTOR_KG_PER_M3
+                    fields_found += 1
+                    usage_found = True
+                    extraction_attempts.append({
+                        "field": "usage_value",
+                        "status": "found",
+                        "value": record.usage_value,
+                        "pattern": pattern,
+                        "matched_text": usage_match.group(0)
+                    })
+                    break
+            
+            if not usage_found:
+                sample_text = ""
+                idx = text.lower().find('m³') if 'm³' in text.lower() else text.lower().find('m3')
+                if idx != -1:
+                    sample_text = text[max(0, idx-80):min(len(text), idx+50)]
+                extraction_attempts.append({
+                    "field": "usage_value",
+                    "status": "missing",
+                    "patterns_tried": usage_patterns,
+                    "text_sample": sample_text or text[:200]
+                })
         
         # Fuel
         elif re.search(r'diesel|gasolina|combustible|litros?|L\b', text, re.IGNORECASE):
             record.category = DocumentCategory.FUEL
             record.scope = 1
-            usage_match = re.search(r'([\d\.\,]+)\s*(Litros|L)\b', text, re.IGNORECASE)
-            if usage_match:
-                record.usage_value = cls.normalize_spanish_number(usage_match.group(1))
-                record.usage_unit = "L"
-                if re.search(r'diesel', text, re.IGNORECASE):
-                    record.emission_factor = settings.DIESEL_FACTOR_KG_PER_L
-                else:
-                    record.emission_factor = settings.GASOLINE_FACTOR_KG_PER_L
-                fields_found += 1
+            extraction_attempts.append({"field": "category", "status": "detected", "value": "fuel"})
+            
+            usage_patterns = [
+                r'([\d\.\,]+)\s*(Litros|L)\b',
+                r'Volume:?\s*([\d\.\,]+)\s*L',
+                r'Cantidad:?\s*([\d\.\,]+)\s*Litros'
+            ]
+            usage_found = False
+            for pattern in usage_patterns:
+                usage_match = re.search(pattern, text, re.IGNORECASE)
+                if usage_match:
+                    record.usage_value = cls.normalize_spanish_number(usage_match.group(1))
+                    record.usage_unit = "L"
+                    if re.search(r'diesel', text, re.IGNORECASE):
+                        record.emission_factor = settings.DIESEL_FACTOR_KG_PER_L
+                    else:
+                        record.emission_factor = settings.GASOLINE_FACTOR_KG_PER_L
+                    fields_found += 1
+                    usage_found = True
+                    extraction_attempts.append({
+                        "field": "usage_value",
+                        "status": "found",
+                        "value": record.usage_value,
+                        "pattern": pattern,
+                        "matched_text": usage_match.group(0)
+                    })
+                    break
+            
+            if not usage_found:
+                sample_text = ""
+                for keyword in ['litros', 'liters', 'l\b']:
+                    idx = text.lower().find(keyword[:5])
+                    if idx != -1:
+                        sample_text = text[max(0, idx-80):min(len(text), idx+50)]
+                        break
+                extraction_attempts.append({
+                    "field": "usage_value",
+                    "status": "missing",
+                    "patterns_tried": usage_patterns,
+                    "text_sample": sample_text or text[:200]
+                })
         
         # Freight
         elif re.search(r'transport|freight|env[ií]o|distancia|km', text, re.IGNORECASE):
             record.category = DocumentCategory.FREIGHT
             record.scope = 3
-            distance_match = re.search(r'([\d\.\,]+)\s*km', text, re.IGNORECASE)
-            weight_match = re.search(r'([\d\.\,]+)\s*kg', text, re.IGNORECASE)
-            if distance_match and weight_match:
-                distance = cls.normalize_spanish_number(distance_match.group(1))
-                weight = cls.normalize_spanish_number(weight_match.group(1))
+            extraction_attempts.append({"field": "category", "status": "detected", "value": "freight"})
+            
+            distance_patterns = [
+                r'([\d\.\,]+)\s*km',
+                r'Distance:?\s*([\d\.\,]+)\s*km',
+                r'Distancia:?\s*([\d\.\,]+)\s*km'
+            ]
+            distance_found = False
+            for pattern in distance_patterns:
+                distance_match = re.search(pattern, text, re.IGNORECASE)
+                if distance_match:
+                    distance = cls.normalize_spanish_number(distance_match.group(1))
+                    distance_found = True
+                    extraction_attempts.append({
+                        "field": "distance",
+                        "status": "found",
+                        "value": distance,
+                        "pattern": pattern
+                    })
+                    break
+            
+            weight_patterns = [
+                r'([\d\.\,]+)\s*kg',
+                r'Weight:?\s*([\d\.\,]+)\s*kg',
+                r'Peso:?\s*([\d\.\,]+)\s*kg'
+            ]
+            weight_found = False
+            for pattern in weight_patterns:
+                weight_match = re.search(pattern, text, re.IGNORECASE)
+                if weight_match:
+                    weight = cls.normalize_spanish_number(weight_match.group(1))
+                    weight_found = True
+                    extraction_attempts.append({
+                        "field": "weight",
+                        "status": "found",
+                        "value": weight,
+                        "pattern": pattern
+                    })
+                    break
+            
+            if distance_found and weight_found:
                 record.usage_value = distance
                 record.usage_unit = "km"
                 # Simplified freight calculation
                 record.co2e_kg = (distance * weight * 0.00012)  # Rough estimate
                 fields_found += 1
+                extraction_attempts.append({
+                    "field": "emissions",
+                    "status": "calculated",
+                    "value": f"{record.co2e_kg:.2f} kg",
+                    "formula": f"{distance} km × {weight} kg × 0.00012"
+                })
+            else:
+                if not distance_found:
+                    extraction_attempts.append({
+                        "field": "distance",
+                        "status": "missing",
+                        "patterns_tried": distance_patterns
+                    })
+                if not weight_found:
+                    extraction_attempts.append({
+                        "field": "weight",
+                        "status": "missing",
+                        "patterns_tried": weight_patterns
+                    })
+        else:
+            extraction_attempts.append({"field": "category", "status": "not_detected", "keywords_searched": ["electric", "gas", "fuel", "freight"]})
         
         # Amount
         amount_patterns = [
@@ -578,21 +755,55 @@ class DocumentParser:
             r'([\d\.\,]+)\s*EUR',
             r'([\d\.\,]+)\s*€'
         ]
+        amount_found = False
         for pattern in amount_patterns:
             match = re.search(pattern, text, re.IGNORECASE)
             if match:
                 record.amount_total = cls.normalize_spanish_number(match.group(1))
                 record.currency = "EUR"
                 fields_found += 1
+                amount_found = True
+                extraction_attempts.append({
+                    "field": "amount_total",
+                    "status": "found",
+                    "value": record.amount_total,
+                    "pattern": pattern,
+                    "matched_text": match.group(0)
+                })
                 break
+        
+        if not amount_found:
+            extraction_attempts.append({
+                "field": "amount_total",
+                "status": "missing",
+                "patterns_tried": amount_patterns
+            })
         
         # Calculate emissions if we have usage and factor
         if record.usage_value and record.emission_factor and not record.co2e_kg:
             record.co2e_kg = record.usage_value * record.emission_factor
             fields_found += 1
+            extraction_attempts.append({
+                "field": "emissions",
+                "status": "calculated",
+                "value": f"{record.co2e_kg:.2f} kg",
+                "formula": f"{record.usage_value} {record.usage_unit} × {record.emission_factor}"
+            })
+        elif not record.co2e_kg:
+            extraction_attempts.append({
+                "field": "emissions",
+                "status": "not_calculated",
+                "reason": f"missing_usage_value={not record.usage_value}, missing_factor={not record.emission_factor}"
+            })
         
         # Update confidence based on fields found
         record.confidence = 0.3 + (fields_found / 8) * 0.6  # Max 0.9
+        
+        # Store extraction log in meta
+        if not isinstance(record.meta, dict):
+            record.meta = {}
+        record.meta['extraction_attempts'] = extraction_attempts
+        record.meta['fields_found_count'] = fields_found
         
         return record
     
@@ -624,7 +835,7 @@ class DocumentParser:
     
     @classmethod
     def _parse_tabular_data(cls, df: Any, sheet_name: str = None) -> List[UploadRecord]:
-        """Parse DataFrame with flexible column mapping - processes ALL rows"""
+        """Parse DataFrame with flexible column mapping - processes ALL rows with detailed logging"""
         # Normalize column names
         df.columns = df.columns.str.lower().str.strip()
         
@@ -650,6 +861,11 @@ class DocumentParser:
         for idx, row in df.iterrows():
             record = UploadRecord()
             fields_found = 0
+            extraction_log = {
+                "columns_available": list(df.columns),
+                "column_mappings": {},
+                "unmapped_fields": []
+            }
             
             # Add sheet/row info to meta
             if sheet_name:
@@ -657,12 +873,14 @@ class DocumentParser:
             else:
                 record.meta = {"row": idx + 1}
             
-            # Map columns
+            # Map columns with logging
             for target, synonyms in column_map.items():
+                mapped = False
                 for syn in synonyms:
                     if syn in df.columns:
                         value = row[syn]
                         if pd.notna(value):
+                            extraction_log["column_mappings"][target] = {"column": syn, "value": str(value)[:100]}
                             if target == 'date':
                                 record.issue_date = pd.to_datetime(value, errors='coerce')
                             elif target == 'supplier':
@@ -678,7 +896,15 @@ class DocumentParser:
                             elif target == 'scope':
                                 record.scope = int(value) if isinstance(value, (int, float)) else None
                             fields_found += 1
+                            mapped = True
                         break
+                
+                if not mapped:
+                    extraction_log["unmapped_fields"].append({
+                        "field": target,
+                        "searched_columns": synonyms,
+                        "status": "not_found_in_csv"
+                    })
             
             # Determine category and scope from usage_unit or context
             if record.usage_unit:
@@ -687,27 +913,49 @@ class DocumentParser:
                     record.category = DocumentCategory.ELECTRICITY
                     record.scope = 2
                     record.emission_factor = settings.ELECTRICITY_FACTOR_KG_PER_KWH
+                    extraction_log["category_detection"] = {"method": "from_unit", "unit": unit_lower, "category": "electricity"}
                 elif 'm3' in unit_lower:
                     record.category = DocumentCategory.NATURAL_GAS
                     record.scope = 1
                     # Use IPCC 2006 factor for natural gas: 2.016 kg CO2e per m³
                     record.emission_factor = 2.016
+                    extraction_log["category_detection"] = {"method": "from_unit", "unit": unit_lower, "category": "gas"}
                 elif 'l' in unit_lower or 'litros' in unit_lower:
                     record.category = DocumentCategory.FUEL
                     record.scope = 1
                     record.emission_factor = settings.DIESEL_FACTOR_KG_PER_L
+                    extraction_log["category_detection"] = {"method": "from_unit", "unit": unit_lower, "category": "fuel"}
                 elif 'km' in unit_lower or 'tkm' in unit_lower:
                     record.category = DocumentCategory.FREIGHT
                     record.scope = 3
                     record.emission_factor = settings.ROAD_FREIGHT_FACTOR_KG_PER_TKM
+                    extraction_log["category_detection"] = {"method": "from_unit", "unit": unit_lower, "category": "freight"}
+                else:
+                    extraction_log["category_detection"] = {"method": "from_unit", "unit": unit_lower, "category": "unknown_unit"}
+            else:
+                extraction_log["category_detection"] = {"method": "not_detected", "reason": "no_usage_unit_found"}
             
             # Calculate CO2e
             if record.usage_value and record.emission_factor:
                 record.co2e_kg = record.usage_value * record.emission_factor
+                extraction_log["emissions_calculation"] = {
+                    "status": "calculated",
+                    "formula": f"{record.usage_value} × {record.emission_factor}",
+                    "result": f"{record.co2e_kg:.2f} kg"
+                }
+            else:
+                extraction_log["emissions_calculation"] = {
+                    "status": "not_calculated",
+                    "reason": f"usage_value={record.usage_value}, emission_factor={record.emission_factor}"
+                }
             
             # Confidence based on fields found
             record.confidence = min(0.3 + (fields_found / 6) * 0.7, 1.0)
-            record.meta.update({"source": "csv/xlsx", "fields_found": fields_found})
+            record.meta.update({
+                "source": "csv/xlsx",
+                "fields_found": fields_found,
+                "extraction_log": extraction_log
+            })
             
             # Only add records with some valid data
             if fields_found > 0:

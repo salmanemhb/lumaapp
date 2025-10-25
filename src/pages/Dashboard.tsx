@@ -762,6 +762,71 @@ export default function Dashboard() {
                                                     <span className="font-medium">Extraction issues:</span> Unable to extract {!rec.usage_value && 'usage value'}{!rec.usage_value && !rec.co2e_kg && ', '}{!rec.co2e_kg && 'emissions calculation'}. Manual review needed.
                                                   </div>
                                                 )}
+                                                {rec.meta?.extraction_log && (
+                                                  <details className="text-xs">
+                                                    <summary className="cursor-pointer text-muted-foreground hover:text-foreground font-medium">
+                                                      🔍 Show extraction details
+                                                    </summary>
+                                                    <div className="mt-2 p-3 bg-muted/30 rounded space-y-2 font-mono text-[10px]">
+                                                      {rec.meta.extraction_log.ocr_text_preview && (
+                                                        <div>
+                                                          <div className="font-semibold text-foreground mb-1">OCR Text ({rec.meta.extraction_log.ocr_text_length} chars):</div>
+                                                          <pre className="whitespace-pre-wrap text-muted-foreground overflow-auto max-h-32">
+                                                            {rec.meta.extraction_log.ocr_text_preview}
+                                                          </pre>
+                                                        </div>
+                                                      )}
+                                                      {rec.meta.extraction_log.columns_available && (
+                                                        <div>
+                                                          <div className="font-semibold text-foreground mb-1">CSV Columns Found:</div>
+                                                          <div className="text-muted-foreground">{rec.meta.extraction_log.columns_available.join(', ')}</div>
+                                                        </div>
+                                                      )}
+                                                      {rec.meta.extraction_attempts && (
+                                                        <div>
+                                                          <div className="font-semibold text-foreground mb-1">Extraction Attempts:</div>
+                                                          {rec.meta.extraction_attempts.map((attempt: any, i: number) => (
+                                                            <div key={i} className="mb-1">
+                                                              <span className="text-foreground font-medium">{attempt.field}:</span>{' '}
+                                                              {attempt.status === 'found' || attempt.status === 'detected' || attempt.status === 'calculated' ? (
+                                                                <span className="text-green-600">✓ {attempt.status}</span>
+                                                              ) : (
+                                                                <span className="text-orange-600">✗ {attempt.status}</span>
+                                                              )}
+                                                              {attempt.value && <span className="text-muted-foreground"> = {JSON.stringify(attempt.value)}</span>}
+                                                              {attempt.matched_text && <span className="text-blue-600"> ("{attempt.matched_text}")</span>}
+                                                              {attempt.text_sample && (
+                                                                <div className="text-muted-foreground ml-4 text-[9px] italic">
+                                                                  Context: {attempt.text_sample}
+                                                                </div>
+                                                              )}
+                                                            </div>
+                                                          ))}
+                                                        </div>
+                                                      )}
+                                                      {rec.meta.extraction_log.column_mappings && Object.keys(rec.meta.extraction_log.column_mappings).length > 0 && (
+                                                        <div>
+                                                          <div className="font-semibold text-foreground mb-1">Column Mappings:</div>
+                                                          {Object.entries(rec.meta.extraction_log.column_mappings).map(([field, info]: any) => (
+                                                            <div key={field} className="text-muted-foreground">
+                                                              • {field} ← "{info.column}" = {info.value}
+                                                            </div>
+                                                          ))}
+                                                        </div>
+                                                      )}
+                                                      {rec.meta.extraction_log.unmapped_fields && rec.meta.extraction_log.unmapped_fields.length > 0 && (
+                                                        <div>
+                                                          <div className="font-semibold text-orange-600 mb-1">Unmapped Fields:</div>
+                                                          {rec.meta.extraction_log.unmapped_fields.map((unmapped: any, i: number) => (
+                                                            <div key={i} className="text-muted-foreground">
+                                                              • {unmapped.field}: looked for [{unmapped.searched_columns.join(', ')}]
+                                                            </div>
+                                                          ))}
+                                                        </div>
+                                                      )}
+                                                    </div>
+                                                  </details>
+                                                )}
                                               </div>
                                             ))}
                                           </div>

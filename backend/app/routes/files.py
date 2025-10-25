@@ -18,6 +18,11 @@ from app.models.schemas import UploadResponse, UploadRecord
 from app.services.auth import get_current_user, get_current_company
 from app.services.ocr import DocumentParser
 
+# Import Agent 1 for enhanced extraction
+import sys
+import re
+sys.path.append(str(Path(__file__).parent.parent.parent))
+
 router = APIRouter(prefix="/files", tags=["Files"])
 
 # Initialize Supabase client
