@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from supabase import create_client, Client
 from datetime import datetime
 from pathlib import Path
+from typing import List
 import uuid
 import tempfile
 import os
@@ -93,47 +94,116 @@ async def upload_file(
             tmp_path = tmp_file.name
         
         try:
-            # Parse document
-            parsed_data: UploadRecord = DocumentParser.parse_document(tmp_path, file_ext)
+            # Parse document - now returns List[UploadRecord]
+            parsed_records: List[UploadRecord] = DocumentParser.parse_document(tmp_path, file_ext)
             
-            # Update upload record with extracted data
-            upload_record.supplier = parsed_data.supplier
-            upload_record.category = parsed_data.category
-            upload_record.scope = parsed_data.scope
-            upload_record.period_start = parsed_data.period_start
-            upload_record.period_end = parsed_data.period_end
-            upload_record.issue_date = parsed_data.issue_date
-            upload_record.invoice_number = parsed_data.invoice_number
-            upload_record.usage_value = parsed_data.usage_value
-            upload_record.usage_unit = parsed_data.usage_unit
-            upload_record.amount_total = parsed_data.amount_total
-            upload_record.currency = parsed_data.currency
-            upload_record.emission_factor = parsed_data.emission_factor
-            upload_record.co2e_kg = parsed_data.co2e_kg
-            upload_record.vat_rate = parsed_data.vat_rate
-            upload_record.confidence = parsed_data.confidence
-            upload_record.meta = str(parsed_data.meta) if parsed_data.meta else None
+            # Handle single record vs multiple records
+            if len(parsed_records) == 1:
+                # Single record - update existing upload_record
+                parsed_data = parsed_records[0]
+                upload_record.supplier = parsed_data.supplier
+                upload_record.category = parsed_data.category
+                upload_record.scope = parsed_data.scope
+                upload_record.period_start = parsed_data.period_start
+                upload_record.period_end = parsed_data.period_end
+                upload_record.issue_date = parsed_data.issue_date
+                upload_record.invoice_number = parsed_data.invoice_number
+                upload_record.usage_value = parsed_data.usage_value
+                upload_record.usage_unit = parsed_data.usage_unit
+                upload_record.amount_total = parsed_data.amount_total
+                upload_record.currency = parsed_data.currency
+                upload_record.emission_factor = parsed_data.emission_factor
+                upload_record.co2e_kg = parsed_data.co2e_kg
+                upload_record.vat_rate = parsed_data.vat_rate
+                upload_record.confidence = parsed_data.confidence
+                upload_record.meta = str(parsed_data.meta) if parsed_data.meta else None
+                
+                # Set status based on confidence
+                if parsed_data.confidence and parsed_data.confidence >= 0.6:
+                    upload_record.status = UploadStatus.PROCESSED
+                else:
+                    upload_record.status = UploadStatus.NEEDS_REVIEW
+                
+                upload_record.processed_at = datetime.utcnow()
+                db.commit()
+                db.refresh(upload_record)
+                
+                return_records = [parsed_data]
             
-            # Set status based on confidence
-            if parsed_data.confidence and parsed_data.confidence >= 0.6:
-                upload_record.status = UploadStatus.PROCESSED
+            elif len(parsed_records) > 1:
+                # Multiple records - create additional upload entries
+                all_uploads = [upload_record]
+                
+                for idx, parsed_data in enumerate(parsed_records):
+                    if idx == 0:
+                        # Update first record (existing upload_record)
+                        current_upload = upload_record
+                    else:
+                        # Create new upload records for additional rows/sheets
+                        current_upload = Upload(
+                            company_id=current_company.id,
+                            file_name=f"{file.filename} (row {idx + 1})",
+                            file_url=file_url,  # Same file URL
+                            source_type=file_ext,
+                            status=UploadStatus.PROCESSING
+                        )
+                        db.add(current_upload)
+                    
+                    # Update with parsed data
+                    current_upload.supplier = parsed_data.supplier
+                    current_upload.category = parsed_data.category
+                    current_upload.scope = parsed_data.scope
+                    current_upload.period_start = parsed_data.period_start
+                    current_upload.period_end = parsed_data.period_end
+                    current_upload.issue_date = parsed_data.issue_date
+                    current_upload.invoice_number = parsed_data.invoice_number
+                    current_upload.usage_value = parsed_data.usage_value
+                    current_upload.usage_unit = parsed_data.usage_unit
+                    current_upload.amount_total = parsed_data.amount_total
+                    current_upload.currency = parsed_data.currency
+                    current_upload.emission_factor = parsed_data.emission_factor
+                    current_upload.co2e_kg = parsed_data.co2e_kg
+                    current_upload.vat_rate = parsed_data.vat_rate
+                    current_upload.confidence = parsed_data.confidence
+                    current_upload.meta = str(parsed_data.meta) if parsed_data.meta else None
+                    
+                    # Set status based on confidence
+                    if parsed_data.confidence and parsed_data.confidence >= 0.6:
+                        current_upload.status = UploadStatus.PROCESSED
+                    else:
+                        current_upload.status = UploadStatus.NEEDS_REVIEW
+                    
+                    current_upload.processed_at = datetime.utcnow()
+                    
+                    if idx > 0:
+                        all_uploads.append(current_upload)
+                
+                db.commit()
+                for upload in all_uploads:
+                    db.refresh(upload)
+                
+                return_records = parsed_records
+            
             else:
-                upload_record.status = UploadStatus.NEEDS_REVIEW
-            
-            upload_record.processed_at = datetime.utcnow()
-            db.commit()
-            db.refresh(upload_record)
+                # No records found
+                upload_record.status = UploadStatus.FAILED
+                upload_record.error_message = "No valid data extracted"
+                db.commit()
+                return_records = parsed_records
             
         finally:
             # Clean up temp file
             if os.path.exists(tmp_path):
                 os.unlink(tmp_path)
         
-        return UploadResponse(
-            file_id=upload_record.id,
-            status=upload_record.status,
-            record=parsed_data
-        )
+        # Return response with info about processed records
+        return {
+            "file_id": upload_record.id,
+            "status": upload_record.status.value,
+            "records_processed": len(return_records),
+            "total_emissions": sum(r.co2e_kg for r in return_records if r.co2e_kg),
+            "message": f"Successfully processed {len(return_records)} record(s)" if return_records else "No valid data found"
+        }
     
     except Exception as e:
         # Update status to failed

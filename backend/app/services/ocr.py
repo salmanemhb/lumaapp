@@ -488,26 +488,34 @@ class DocumentParser:
         return record
     
     @classmethod
-    def parse_csv(cls, file_path: str) -> UploadRecord:
-        """Parse CSV file with flexible column mapping"""
+    def parse_csv(cls, file_path: str) -> List[UploadRecord]:
+        """Parse CSV file with flexible column mapping - returns list of records for multi-row support"""
         try:
             df = pd.read_csv(file_path)
             return cls._parse_tabular_data(df)
         except Exception as e:
-            return UploadRecord(confidence=0.0, meta={"error": str(e)})
+            return [UploadRecord(confidence=0.0, meta={"error": str(e)})]
     
     @classmethod
-    def parse_xlsx(cls, file_path: str) -> UploadRecord:
-        """Parse XLSX file with flexible column mapping"""
+    def parse_xlsx(cls, file_path: str) -> List[UploadRecord]:
+        """Parse Excel file with flexible column mapping - supports multiple sheets and rows"""
         try:
-            df = pd.read_excel(file_path)
-            return cls._parse_tabular_data(df)
+            # Read all sheets
+            excel_file = pd.ExcelFile(file_path)
+            all_records = []
+            
+            for sheet_name in excel_file.sheet_names:
+                df = pd.read_excel(file_path, sheet_name=sheet_name)
+                sheet_records = cls._parse_tabular_data(df, sheet_name=sheet_name)
+                all_records.extend(sheet_records)
+            
+            return all_records if all_records else [UploadRecord(confidence=0.0, meta={"error": "No data found"})]
         except Exception as e:
-            return UploadRecord(confidence=0.0, meta={"error": str(e)})
+            return [UploadRecord(confidence=0.0, meta={"error": str(e)})]
     
     @classmethod
-    def _parse_tabular_data(cls, df: Any) -> UploadRecord:
-        """Parse DataFrame with flexible column mapping"""
+    def _parse_tabular_data(cls, df: Any, sheet_name: str = None) -> List[UploadRecord]:
+        """Parse DataFrame with flexible column mapping - processes ALL rows"""
         # Normalize column names
         df.columns = df.columns.str.lower().str.strip()
         
@@ -523,64 +531,77 @@ class DocumentParser:
             'scope': ['alcance', 'scope'],
         }
         
-        # Extract first row data
+        # Process ALL rows instead of just first
         if len(df) == 0:
-            return UploadRecord(confidence=0.0, meta={"error": "Empty file"})
+            return [UploadRecord(confidence=0.0, meta={"error": "Empty file"})]
         
-        row = df.iloc[0]
-        record = UploadRecord()
-        fields_found = 0
+        records = []
         
-        # Map columns
-        for target, synonyms in column_map.items():
-            for syn in synonyms:
-                if syn in df.columns:
-                    value = row[syn]
-                    if pd.notna(value):
-                        if target == 'date':
-                            record.issue_date = pd.to_datetime(value, errors='coerce')
-                        elif target == 'supplier':
-                            record.supplier = str(value)
-                        elif target == 'usage_value':
-                            record.usage_value = float(value) if isinstance(value, (int, float)) else None
-                        elif target == 'usage_unit':
-                            record.usage_unit = str(value)
-                        elif target == 'amount_total':
-                            record.amount_total = float(value) if isinstance(value, (int, float)) else None
-                        elif target == 'invoice_number':
-                            record.invoice_number = str(value)
-                        elif target == 'scope':
-                            record.scope = int(value) if isinstance(value, (int, float)) else None
-                        fields_found += 1
-                    break
+        # Loop through each row in the dataframe
+        for idx, row in df.iterrows():
+            record = UploadRecord()
+            fields_found = 0
+            
+            # Add sheet/row info to meta
+            if sheet_name:
+                record.meta = {"sheet": sheet_name, "row": idx + 2}  # +2 for header + 0-index
+            else:
+                record.meta = {"row": idx + 1}
+            
+            # Map columns
+            for target, synonyms in column_map.items():
+                for syn in synonyms:
+                    if syn in df.columns:
+                        value = row[syn]
+                        if pd.notna(value):
+                            if target == 'date':
+                                record.issue_date = pd.to_datetime(value, errors='coerce')
+                            elif target == 'supplier':
+                                record.supplier = str(value)
+                            elif target == 'usage_value':
+                                record.usage_value = float(value) if isinstance(value, (int, float)) else None
+                            elif target == 'usage_unit':
+                                record.usage_unit = str(value)
+                            elif target == 'amount_total':
+                                record.amount_total = float(value) if isinstance(value, (int, float)) else None
+                            elif target == 'invoice_number':
+                                record.invoice_number = str(value)
+                            elif target == 'scope':
+                                record.scope = int(value) if isinstance(value, (int, float)) else None
+                            fields_found += 1
+                        break
+            
+            # Determine category and scope from usage_unit or context
+            if record.usage_unit:
+                unit_lower = record.usage_unit.lower()
+                if 'kwh' in unit_lower:
+                    record.category = DocumentCategory.ELECTRICITY
+                    record.scope = 2
+                    record.emission_factor = settings.ELECTRICITY_FACTOR_KG_PER_KWH
+                elif 'm3' in unit_lower:
+                    record.category = DocumentCategory.NATURAL_GAS
+                    record.scope = 1
+                    # Use IPCC 2006 factor for natural gas: 2.016 kg CO2e per m³
+                    record.emission_factor = 2.016
+                elif 'l' in unit_lower or 'litros' in unit_lower:
+                    record.category = DocumentCategory.FUEL
+                    record.scope = 1
+                    record.emission_factor = settings.DIESEL_FACTOR_KG_PER_L
+                elif 'km' in unit_lower or 'tkm' in unit_lower:
+                    record.category = DocumentCategory.FREIGHT
+                    record.scope = 3
+                    record.emission_factor = settings.ROAD_FREIGHT_FACTOR_KG_PER_TKM
+            
+            # Calculate CO2e
+            if record.usage_value and record.emission_factor:
+                record.co2e_kg = record.usage_value * record.emission_factor
+            
+            # Confidence based on fields found
+            record.confidence = min(0.3 + (fields_found / 6) * 0.7, 1.0)
+            record.meta.update({"source": "csv/xlsx", "fields_found": fields_found})
+            
+            # Only add records with some valid data
+            if fields_found > 0:
+                records.append(record)
         
-        # Determine category and scope from usage_unit or context
-        if record.usage_unit:
-            unit_lower = record.usage_unit.lower()
-            if 'kwh' in unit_lower:
-                record.category = DocumentCategory.ELECTRICITY
-                record.scope = 2
-                record.emission_factor = settings.ELECTRICITY_FACTOR_KG_PER_KWH
-            elif 'm3' in unit_lower:
-                record.category = DocumentCategory.NATURAL_GAS
-                record.scope = 1
-                # Use IPCC 2006 factor for natural gas: 2.016 kg CO2e per m³
-                record.emission_factor = 2.016
-            elif 'l' in unit_lower or 'litros' in unit_lower:
-                record.category = DocumentCategory.FUEL
-                record.scope = 1
-                record.emission_factor = settings.DIESEL_FACTOR_KG_PER_L
-            elif 'km' in unit_lower or 'tkm' in unit_lower:
-                record.category = DocumentCategory.FREIGHT
-                record.scope = 3
-                record.emission_factor = settings.ROAD_FREIGHT_FACTOR_KG_PER_TKM
-        
-        # Calculate CO2e
-        if record.usage_value and record.emission_factor:
-            record.co2e_kg = record.usage_value * record.emission_factor
-        
-        # Confidence based on fields found
-        record.confidence = min(0.3 + (fields_found / 6) * 0.7, 1.0)
-        record.meta = {"source": "csv/xlsx", "fields_found": fields_found}
-        
-        return record
+        return records if records else [UploadRecord(confidence=0.0, meta={"error": "No valid data found"})]
