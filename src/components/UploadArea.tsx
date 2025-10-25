@@ -16,7 +16,11 @@ interface UploadedFile {
   error?: string;
 }
 
-export default function UploadArea() {
+interface UploadAreaProps {
+  onUploadComplete?: () => void;
+}
+
+export default function UploadArea({ onUploadComplete }: UploadAreaProps = {}) {
   const { language } = useLanguage();
   const { t } = useTranslation(language);
   const [files, setFiles] = useState<UploadedFile[]>([]);
@@ -62,6 +66,11 @@ export default function UploadArea() {
       );
 
       toast.success(`${file.name} processed successfully!`);
+      
+      // Trigger dashboard refresh
+      if (onUploadComplete) {
+        onUploadComplete();
+      }
     } catch (error) {
       console.error('Upload error:', error);
       

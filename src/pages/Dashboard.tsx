@@ -124,8 +124,17 @@ export default function Dashboard() {
     },
   ];
 
-  // Use real data or show demo data only for demo user
-  const monthlyData = isDemo ? [
+  // Calculate totals from actual uploads
+  const totalEmissions = uploads.reduce((sum: number, u: any) => sum + (u.co2e_kg || 0), 0);
+  const scope1Total = uploads.filter((u: any) => u.scope === 1).reduce((sum: number, u: any) => sum + (u.co2e_kg || 0), 0);
+  const scope2Total = uploads.filter((u: any) => u.scope === 2).reduce((sum: number, u: any) => sum + (u.co2e_kg || 0), 0);
+  const scope3Total = uploads.filter((u: any) => u.scope === 3).reduce((sum: number, u: any) => sum + (u.co2e_kg || 0), 0);
+  
+  // Use real data first, fall back to demo only if demo user AND no real data
+  const hasRealData = uploads.length > 0;
+  const showDemoData = isDemo && !hasRealData;
+  
+  const monthlyData = showDemoData ? [
     { month: 'Jan', emissions: 120 },
     { month: 'Feb', emissions: 150 },
     { month: 'Mar', emissions: 135 },
@@ -134,30 +143,30 @@ export default function Dashboard() {
     { month: 'Jun', emissions: 140 },
   ] : (dashboardData?.monthly_emissions || []);
 
-  const scopeData = isDemo ? [
+  const scopeData = showDemoData ? [
     { name: t.dashboard.scope1, value: 450, color: 'hsl(var(--sage))' },
     { name: t.dashboard.scope2, value: 320, color: 'hsl(var(--gold))' },
     { name: t.dashboard.scope3, value: 180, color: 'hsl(var(--accent))' },
-  ] : (dashboardData?.scope_breakdown || []);
+  ] : (hasRealData ? [
+    { name: t.dashboard.scope1, value: scope1Total, color: 'hsl(var(--sage))' },
+    { name: t.dashboard.scope2, value: scope2Total, color: 'hsl(var(--gold))' },
+    { name: t.dashboard.scope3, value: scope3Total, color: 'hsl(var(--accent))' },
+  ] : []);
 
-  const recentFiles = isDemo ? [
-    { name: 'electricity_bill_june.pdf', status: 'processed', emissions: 45.2, date: '2025-10-22' },
-    { name: 'gas_invoice_june.pdf', status: 'processed', emissions: 32.8, date: '2025-10-22' },
-    { name: 'transport_data.csv', status: 'processing', emissions: null, date: '2025-10-23' },
-  ] : uploads.slice(0, 4).map((upload: any) => ({
+  const recentFiles = uploads.slice(0, 4).map((upload: any) => ({
     name: upload.file_name,
     status: upload.status,
     emissions: upload.co2e_kg,
     date: upload.uploaded_at,
   }));
 
-  const currentMonthEmissions = isDemo ? 950 : (dashboardData?.total_emissions_kg || 0);
-  const lastMonthEmissions = isDemo ? 1020 : (dashboardData?.last_month_emissions_kg || 0);
+  const currentMonthEmissions = hasRealData ? totalEmissions : (showDemoData ? 950 : 0);
+  const lastMonthEmissions = showDemoData ? 1020 : (dashboardData?.last_month_emissions_kg || 0);
   const percentChange = lastMonthEmissions > 0 
     ? ((currentMonthEmissions - lastMonthEmissions) / lastMonthEmissions * 100).toFixed(1)
     : '0.0';
   const isDecrease = currentMonthEmissions < lastMonthEmissions;
-  const progress = isDemo ? 78 : (dashboardData?.csrd_readiness_pct || 0);
+  const progress = hasRealData ? ((uploads.filter((u: any) => u.status === 'processed').length / uploads.length) * 100) : (showDemoData ? 78 : 0);
 
   if (authLoading || isLoading) {
     return (
@@ -249,7 +258,18 @@ export default function Dashboard() {
                 <CardDescription className="text-base">{t.dashboard.emptyState}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                <UploadArea />
+                <UploadArea onUploadComplete={() => {
+                  // Reload dashboard data after upload
+                  const token = localStorage.getItem('luma_auth_token');
+                  if (token) {
+                    fetch(`${API_URL}/api/files/uploads`, {
+                      headers: { 'Authorization': `Bearer ${token}` },
+                    })
+                      .then(res => res.json())
+                      .then(data => setUploads(data))
+                      .catch(console.error);
+                  }
+                }} />
                 
                 <div className="text-center pt-4">
                   <FileText className="mx-auto h-16 w-16 text-muted-foreground mb-4 opacity-50" />
@@ -283,7 +303,27 @@ export default function Dashboard() {
             {/* Upload Section */}
             <div className="upload-section">
               <h2 className="text-2xl font-bold mb-4">{t.dashboard.uploadButton}</h2>
-              <UploadArea />
+              <UploadArea onUploadComplete={() => {
+                // Reload dashboard data after upload
+                const token = localStorage.getItem('luma_auth_token');
+                if (token) {
+                  fetch(`${API_URL}/api/files/uploads`, {
+                    headers: { 'Authorization': `Bearer ${token}` },
+                  })
+                    .then(res => res.json())
+                    .then(data => {
+                      setUploads(data);
+                      // Also refresh dashboard summary
+                      fetch(`${API_URL}/api/dashboard`, {
+                        headers: { 'Authorization': `Bearer ${token}` },
+                      })
+                        .then(res => res.json())
+                        .then(summary => setDashboardData(summary))
+                        .catch(console.error);
+                    })
+                    .catch(console.error);
+                }
+              }} />
             </div>
 
             {/* KPI Cards */}
@@ -312,7 +352,7 @@ export default function Dashboard() {
                   <CardTitle className="text-sm font-medium">{t.dashboard.scope1}</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">450 kg</div>
+                  <div className="text-2xl font-bold">{scope1Total.toFixed(2)} kg</div>
                   <p className="text-xs text-muted-foreground">CO₂e</p>
                 </CardContent>
               </Card>
@@ -322,7 +362,7 @@ export default function Dashboard() {
                   <CardTitle className="text-sm font-medium">{t.dashboard.scope2}</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">320 kg</div>
+                  <div className="text-2xl font-bold">{scope2Total.toFixed(2)} kg</div>
                   <p className="text-xs text-muted-foreground">CO₂e</p>
                 </CardContent>
               </Card>
