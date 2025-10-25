@@ -45,7 +45,8 @@ export default function Dashboard() {
       if (!isAuthenticated || authLoading) return;
 
       try {
-        const token = localStorage.getItem('access_token');
+        const token = localStorage.getItem('luma_auth_token');
+        if (!token) return;
         
         // Fetch uploads
         const uploadsResponse = await fetch(`${API_URL}/api/files/uploads`, {

@@ -26,10 +26,10 @@ export default function UploadArea() {
     formData.append('file', file);
 
     try {
-      // Get token from localStorage
-      const token = localStorage.getItem('access_token');
+      // Get token from localStorage (matches AuthContext key)
+      const token = localStorage.getItem('luma_auth_token');
       if (!token) {
-        throw new Error('Not authenticated');
+        throw new Error('Not authenticated. Please log in again.');
       }
 
       const response = await fetch(`${API_URL}/api/files/upload`, {
