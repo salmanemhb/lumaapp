@@ -268,13 +268,13 @@ export default function Dashboard() {
       records: group.records,
     }));
 
-  const currentMonthEmissions = hasRealData ? totalEmissions : (showDemoData ? 950 : 0);
+  const currentMonthEmissions = hasRealData ? Number(totalEmissions.toFixed(2)) : (showDemoData ? 950 : 0);
   const lastMonthEmissions = showDemoData ? 1020 : (dashboardData?.last_month_emissions_kg || 0);
   const percentChange = lastMonthEmissions > 0 
     ? ((currentMonthEmissions - lastMonthEmissions) / lastMonthEmissions * 100).toFixed(1)
     : '0.0';
   const isDecrease = currentMonthEmissions < lastMonthEmissions;
-  const progress = hasRealData ? ((uploads.filter((u: any) => u.status === 'processed').length / uploads.length) * 100) : (showDemoData ? 78 : 0);
+  const progress = hasRealData ? Number(((uploads.filter((u: any) => u.status === 'processed').length / uploads.length) * 100).toFixed(2)) : (showDemoData ? 78 : 0);
 
   if (authLoading || isLoading) {
     return (
@@ -671,6 +671,11 @@ export default function Dashboard() {
                                   <div className="flex items-center gap-2">
                                     <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                                     <span className="font-medium truncate">{file.name}</span>
+                                    {file.record_count > 1 && (
+                                      <Badge variant="secondary" className="text-xs">
+                                        {file.record_count} invoices
+                                      </Badge>
+                                    )}
                                   </div>
                                 </TableCell>
                                 <TableCell>
