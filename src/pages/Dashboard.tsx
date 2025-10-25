@@ -594,8 +594,38 @@ export default function Dashboard() {
 
             {/* Recent Uploads */}
             <Card className="shadow-soft">
-              <CardHeader>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
                 <CardTitle>{t.dashboard.recentUploads}</CardTitle>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={async () => {
+                    if (confirm('Are you sure you want to delete ALL uploads? This cannot be undone.')) {
+                      try {
+                        const token = localStorage.getItem('luma_auth_token');
+                        const response = await fetch(`${API_URL}/api/files/uploads/clear`, {
+                          method: 'DELETE',
+                          headers: {
+                            'Authorization': `Bearer ${token}`,
+                          },
+                        });
+                        if (response.ok) {
+                          toast.success('All uploads cleared successfully');
+                          setUploads([]);
+                          setDashboardData(null);
+                        } else {
+                          toast.error('Failed to clear uploads');
+                        }
+                      } catch (error) {
+                        toast.error('Failed to clear uploads');
+                      }
+                    }
+                  }}
+                  className="gap-2"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Clear All
+                </Button>
               </CardHeader>
               <CardContent>
                 <div className="max-h-[600px] overflow-y-auto overflow-x-auto">

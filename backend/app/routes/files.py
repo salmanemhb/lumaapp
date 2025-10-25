@@ -213,7 +213,36 @@ async def upload_file(
         
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to process file: {str(e)}"
+            detail=f"Failed to delete file: {str(e)}"
+        )
+
+
+@router.delete("/uploads/clear")
+async def clear_all_uploads(
+    current_user: User = Depends(get_current_user),
+    current_company: Company = Depends(get_current_company),
+    db: Session = Depends(get_db)
+):
+    """
+    Clear all uploads for current company
+    """
+    try:
+        # Delete all uploads for the company
+        deleted_count = db.query(Upload).filter(
+            Upload.company_id == current_company.id
+        ).delete()
+        
+        db.commit()
+        
+        return {
+            "message": f"Successfully deleted {deleted_count} upload(s)",
+            "deleted_count": deleted_count
+        }
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to clear uploads: {str(e)}"
         )
 
 
