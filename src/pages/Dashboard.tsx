@@ -6,9 +6,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
+import { Badge } from '@/components/ui/badge';
 import UploadArea from '@/components/UploadArea';
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { LogOut, FileText, Mail, Download, TrendingUp, TrendingDown, Calendar, Loader2, Trash2 } from 'lucide-react';
+import { LogOut, FileText, Mail, Download, TrendingUp, TrendingDown, Calendar, Loader2, Trash2, ChevronRight, ChevronDown, Calculator, Package, Clock, CheckCircle2, AlertCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useTranslation } from '@/lib/i18n';
@@ -28,6 +29,9 @@ export default function Dashboard() {
   const [lastReportDate, setLastReportDate] = useState<Date | null>(null);
   const [uploads, setUploads] = useState<any[]>([]);
   const [dashboardData, setDashboardData] = useState<any>(null);
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+  const [loadingDetails, setLoadingDetails] = useState<Set<string>>(new Set());
+  const [fileDetails, setFileDetails] = useState<Map<string, any>>(new Map());
   
   // Check if user is demo or real user
   const isDemo = user?.email === 'demo@luma.es';
@@ -134,6 +138,49 @@ export default function Dashboard() {
     } catch (error) {
       console.error('Delete error:', error);
       toast.error('Failed to delete file');
+    }
+  };
+
+  const toggleRowExpansion = async (fileId: string) => {
+    const newExpanded = new Set(expandedRows);
+    
+    if (newExpanded.has(fileId)) {
+      // Collapse
+      newExpanded.delete(fileId);
+      setExpandedRows(newExpanded);
+    } else {
+      // Expand
+      newExpanded.add(fileId);
+      setExpandedRows(newExpanded);
+      
+      // Fetch details if not already loaded
+      if (!fileDetails.has(fileId)) {
+        const newLoading = new Set(loadingDetails);
+        newLoading.add(fileId);
+        setLoadingDetails(newLoading);
+        
+        try {
+          const token = localStorage.getItem('luma_auth_token');
+          const response = await fetch(`${API_URL}/api/files/uploads/${fileId}`, {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+            },
+          });
+          
+          if (response.ok) {
+            const details = await response.json();
+            const newDetails = new Map(fileDetails);
+            newDetails.set(fileId, details);
+            setFileDetails(newDetails);
+          }
+        } catch (error) {
+          console.error('Failed to fetch file details:', error);
+        } finally {
+          const newLoading = new Set(loadingDetails);
+          newLoading.delete(fileId);
+          setLoadingDetails(newLoading);
+        }
+      }
     }
   };
 
@@ -528,6 +575,7 @@ export default function Dashboard() {
                   <Table>
                     <TableHeader>
                       <TableRow>
+                        <TableHead className="w-[40px]"></TableHead>
                         <TableHead>{t.dashboard.fileName}</TableHead>
                         <TableHead>{t.dashboard.status}</TableHead>
                         <TableHead className="text-right">{t.dashboard.emissions}</TableHead>
@@ -537,42 +585,209 @@ export default function Dashboard() {
                     </TableHeader>
                     <TableBody>
                       {recentFiles.length > 0 ? (
-                        recentFiles.map((file: any, index: number) => (
-                          <TableRow key={index}>
-                            <TableCell className="flex items-center gap-2">
-                              <FileText className="h-4 w-4 text-muted-foreground" />
-                              {file.name}
-                            </TableCell>
-                            <TableCell>
-                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                file.status === 'processed' 
-                                  ? 'bg-primary/10 text-primary' 
-                                  : 'bg-muted text-muted-foreground'
-                              }`}>
-                                {file.status === 'processed' ? t.dashboard.processed : t.dashboard.processing}
-                              </span>
-                            </TableCell>
-                            <TableCell className="text-right font-medium">
-                              {file.emissions ? `${file.emissions.toFixed(2)} kg` : '—'}
-                            </TableCell>
-                            <TableCell className="text-right text-sm text-muted-foreground">
-                              {file.date ? new Date(file.date).toLocaleDateString(language === 'es' ? 'es-ES' : 'en-US', {
-                                month: 'short',
-                                day: 'numeric',
-                              }) : '—'}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleDeleteFile(file.file_id || uploads[index]?.file_id, file.name)}
-                                className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </TableCell>
-                          </TableRow>
-                        ))
+                        recentFiles.map((file: any, index: number) => {
+                          const isExpanded = expandedRows.has(file.file_id);
+                          const details = fileDetails.get(file.file_id);
+                          const isLoadingDetails = loadingDetails.has(file.file_id);
+                          
+                          return (
+                            <>
+                              <TableRow key={index} className="group">
+                                <TableCell className="w-[40px]">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => toggleRowExpansion(file.file_id)}
+                                    className="h-6 w-6 p-0 hover:bg-accent"
+                                  >
+                                    {isExpanded ? (
+                                      <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform" />
+                                    ) : (
+                                      <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform" />
+                                    )}
+                                  </Button>
+                                </TableCell>
+                                <TableCell>
+                                  <div className="flex items-center gap-2">
+                                    <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                                    <span className="font-medium truncate">{file.name}</span>
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  <Badge 
+                                    variant={file.status === 'processed' ? 'default' : 'secondary'}
+                                    className="font-normal"
+                                  >
+                                    {file.status === 'processed' ? t.dashboard.processed : t.dashboard.processing}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell className="text-right font-medium">
+                                  {file.emissions ? `${file.emissions.toFixed(2)} kg` : '—'}
+                                </TableCell>
+                                <TableCell className="text-right text-sm text-muted-foreground">
+                                  {file.date ? new Date(file.date).toLocaleDateString(language === 'es' ? 'es-ES' : 'en-US', {
+                                    month: 'short',
+                                    day: 'numeric',
+                                  }) : '—'}
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleDeleteFile(file.file_id || uploads[index]?.file_id, file.name)}
+                                    className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </TableCell>
+                              </TableRow>
+                              
+                              {/* Expandable Details Row */}
+                              {isExpanded && (
+                                <TableRow key={`${index}-details`} className="bg-muted/30 hover:bg-muted/30">
+                                  <TableCell colSpan={6} className="p-0">
+                                    <div className="px-6 py-4 space-y-4 animate-in slide-in-from-top-2 duration-200">
+                                      {isLoadingDetails ? (
+                                        <div className="flex items-center justify-center py-8">
+                                          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                                        </div>
+                                      ) : details ? (
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                          {/* Left Column - Extracted Data */}
+                                          <div className="space-y-3">
+                                            <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                                              <Package className="h-4 w-4 text-primary" />
+                                              Extracted Data
+                                            </div>
+                                            <div className="space-y-2 pl-6 border-l-2 border-primary/20">
+                                              {details.supplier && (
+                                                <div className="flex justify-between text-sm">
+                                                  <span className="text-muted-foreground">Supplier:</span>
+                                                  <span className="font-medium">{details.supplier}</span>
+                                                </div>
+                                              )}
+                                              {details.category && (
+                                                <div className="flex justify-between text-sm">
+                                                  <span className="text-muted-foreground">Category:</span>
+                                                  <span className="font-medium capitalize">{details.category}</span>
+                                                </div>
+                                              )}
+                                              {details.scope && (
+                                                <div className="flex justify-between text-sm">
+                                                  <span className="text-muted-foreground">Scope:</span>
+                                                  <Badge variant="outline" className="font-normal">
+                                                    Scope {details.scope}
+                                                  </Badge>
+                                                </div>
+                                              )}
+                                              {details.invoice_number && (
+                                                <div className="flex justify-between text-sm">
+                                                  <span className="text-muted-foreground">Invoice #:</span>
+                                                  <span className="font-mono text-xs">{details.invoice_number}</span>
+                                                </div>
+                                              )}
+                                              {details.usage_value && (
+                                                <div className="flex justify-between text-sm">
+                                                  <span className="text-muted-foreground">Consumption:</span>
+                                                  <span className="font-medium">
+                                                    {details.usage_value.toLocaleString()} {details.usage_unit || ''}
+                                                  </span>
+                                                </div>
+                                              )}
+                                              {details.amount_total && (
+                                                <div className="flex justify-between text-sm">
+                                                  <span className="text-muted-foreground">Amount:</span>
+                                                  <span className="font-medium">
+                                                    €{details.amount_total.toFixed(2)}
+                                                  </span>
+                                                </div>
+                                              )}
+                                              {details.period_start && details.period_end && (
+                                                <div className="flex justify-between text-sm">
+                                                  <span className="text-muted-foreground">Period:</span>
+                                                  <span className="text-xs">
+                                                    {new Date(details.period_start).toLocaleDateString()} - {new Date(details.period_end).toLocaleDateString()}
+                                                  </span>
+                                                </div>
+                                              )}
+                                            </div>
+                                          </div>
+
+                                          {/* Right Column - Calculation & Metadata */}
+                                          <div className="space-y-3">
+                                            {/* Emission Calculation */}
+                                            <div className="space-y-2">
+                                              <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                                                <Calculator className="h-4 w-4 text-sage" />
+                                                Emission Calculation
+                                              </div>
+                                              <div className="pl-6 border-l-2 border-sage/20">
+                                                {details.usage_value && details.emission_factor ? (
+                                                  <div className="space-y-1">
+                                                    <div className="text-sm text-muted-foreground font-mono">
+                                                      {details.usage_value.toLocaleString()} {details.usage_unit} × {details.emission_factor} kg/unit
+                                                    </div>
+                                                    <div className="text-lg font-bold text-sage">
+                                                      = {details.co2e_kg?.toFixed(2)} kg CO₂e
+                                                    </div>
+                                                  </div>
+                                                ) : (
+                                                  <div className="text-sm text-muted-foreground">No calculation data</div>
+                                                )}
+                                              </div>
+                                            </div>
+
+                                            {/* Confidence & Status */}
+                                            <div className="space-y-2 pt-2">
+                                              <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                                                <Clock className="h-4 w-4 text-gold" />
+                                                Processing Info
+                                              </div>
+                                              <div className="pl-6 space-y-2 border-l-2 border-gold/20">
+                                                {details.confidence !== undefined && (
+                                                  <div className="flex items-center justify-between text-sm">
+                                                    <span className="text-muted-foreground">Confidence:</span>
+                                                    <div className="flex items-center gap-2">
+                                                      {details.confidence >= 0.8 ? (
+                                                        <CheckCircle2 className="h-4 w-4 text-green-500" />
+                                                      ) : details.confidence >= 0.6 ? (
+                                                        <CheckCircle2 className="h-4 w-4 text-yellow-500" />
+                                                      ) : (
+                                                        <AlertCircle className="h-4 w-4 text-orange-500" />
+                                                      )}
+                                                      <span className="font-medium">{(details.confidence * 100).toFixed(0)}%</span>
+                                                    </div>
+                                                  </div>
+                                                )}
+                                                {details.meta && typeof details.meta === 'string' && (
+                                                  <div className="text-xs text-muted-foreground">
+                                                    <pre className="bg-muted/50 p-2 rounded overflow-x-auto">
+                                                      {JSON.stringify(JSON.parse(details.meta), null, 2)}
+                                                    </pre>
+                                                  </div>
+                                                )}
+                                                {details.processed_at && (
+                                                  <div className="flex justify-between text-xs text-muted-foreground">
+                                                    <span>Processed:</span>
+                                                    <span>{new Date(details.processed_at).toLocaleString()}</span>
+                                                  </div>
+                                                )}
+                                              </div>
+                                            </div>
+                                          </div>
+                                        </div>
+                                      ) : (
+                                        <div className="text-center py-4 text-sm text-muted-foreground">
+                                          No details available
+                                        </div>
+                                      )}
+                                    </div>
+                                  </TableCell>
+                                </TableRow>
+                              )}
+                            </>
+                          );
+                        })
                       ) : (
                         <TableRow>
                           <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
