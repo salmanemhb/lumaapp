@@ -610,14 +610,17 @@ export default function Dashboard() {
                           },
                         });
                         if (response.ok) {
-                          toast.success('All uploads cleared successfully');
+                          const result = await response.json();
+                          toast.success(`Successfully deleted ${result.deleted_count} upload(s)`);
                           setUploads([]);
                           setDashboardData(null);
                         } else {
-                          toast.error('Failed to clear uploads');
+                          const error = await response.json().catch(() => ({ detail: 'Unknown error' }));
+                          toast.error(`Failed to clear uploads: ${error.detail || response.statusText}`);
                         }
                       } catch (error) {
-                        toast.error('Failed to clear uploads');
+                        console.error('Clear uploads error:', error);
+                        toast.error(`Failed to clear uploads: ${error instanceof Error ? error.message : 'Network error'}`);
                       }
                     }
                   }}
