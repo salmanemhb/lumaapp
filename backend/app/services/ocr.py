@@ -146,7 +146,7 @@ class DocumentParser:
         return None
     
     @classmethod
-    def parse_document(cls, file_path: str, source_type: str) -> UploadRecord:
+    def parse_document(cls, file_path: str, source_type: str) -> List[UploadRecord]:
         """
         Main entry point for document parsing
         
@@ -155,10 +155,10 @@ class DocumentParser:
             source_type: 'pdf', 'csv', 'xlsx', 'xls', 'txt'
         
         Returns:
-            UploadRecord with extracted data
+            List[UploadRecord] with extracted data
         """
         if source_type == "pdf":
-            return cls.parse_pdf_invoice(file_path)
+            return [cls.parse_pdf_invoice(file_path)]
         elif source_type == "csv":
             return cls.parse_csv(file_path)
         elif source_type in ["xlsx", "xls"]:
@@ -171,18 +171,18 @@ class DocumentParser:
             # Detect supplier and route to appropriate parser
             supplier = cls.detect_supplier(text)
             if supplier == "Iberdrola":
-                return cls.parse_iberdrola_pdf(text, metadata)
+                return [cls.parse_iberdrola_pdf(text, metadata)]
             elif supplier == "Endesa":
-                return cls.parse_endesa_pdf(text, metadata)
+                return [cls.parse_endesa_pdf(text, metadata)]
             elif supplier == "Naturgy":
-                return cls.parse_naturgy_pdf(text, metadata)
+                return [cls.parse_naturgy_pdf(text, metadata)]
             elif supplier in ["Repsol", "Cepsa", "Galp", "Shell", "BP"]:
-                return cls.parse_fuel_pdf(text, metadata, supplier)
+                return [cls.parse_fuel_pdf(text, metadata, supplier)]
             else:
-                return cls.parse_generic_pdf(text, metadata)
+                return [cls.parse_generic_pdf(text, metadata)]
         else:
             # Return empty record
-            return UploadRecord(confidence=0.0, meta={"error": "Unsupported file type"})
+            return [UploadRecord(confidence=0.0, meta={"error": "Unsupported file type"})]
     
     @classmethod
     def parse_pdf_invoice(cls, file_path: str) -> UploadRecord:

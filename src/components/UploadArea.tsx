@@ -58,18 +58,25 @@ export default function UploadArea({ onUploadComplete }: UploadAreaProps = {}) {
             ? {
                 ...f,
                 status: 'processed',
-                emissions: data.record?.co2e_kg || 0,
+                emissions: data.total_emissions || 0,
                 fileId: data.file_id,
               }
             : f
         )
       );
 
-      toast.success(`${file.name} processed successfully!`);
+      toast.success(`${file.name} processed successfully! (${data.records_processed} record(s))`);
       
-      // Trigger dashboard refresh
+      // Clear processed file from upload area after 2 seconds
+      setTimeout(() => {
+        setFiles((prev) => prev.filter((f) => f.name !== file.name));
+      }, 2000);
+      
+      // Trigger dashboard refresh immediately
       if (onUploadComplete) {
-        onUploadComplete();
+        setTimeout(() => {
+          onUploadComplete();
+        }, 500);
       }
     } catch (error) {
       console.error('Upload error:', error);
@@ -87,6 +94,11 @@ export default function UploadArea({ onUploadComplete }: UploadAreaProps = {}) {
       );
 
       toast.error(`Failed to upload ${file.name}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      
+      // Clear failed file from upload area after 5 seconds
+      setTimeout(() => {
+        setFiles((prev) => prev.filter((f) => f.name !== file.name));
+      }, 5000);
     }
   };
 
