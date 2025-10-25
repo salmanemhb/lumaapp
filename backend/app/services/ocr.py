@@ -152,7 +152,7 @@ class DocumentParser:
         
         Args:
             file_path: Path to uploaded file
-            source_type: 'pdf', 'csv', or 'xlsx'
+            source_type: 'pdf', 'csv', 'xlsx', 'xls', 'txt'
         
         Returns:
             UploadRecord with extracted data
@@ -161,8 +161,25 @@ class DocumentParser:
             return cls.parse_pdf_invoice(file_path)
         elif source_type == "csv":
             return cls.parse_csv(file_path)
-        elif source_type == "xlsx":
+        elif source_type in ["xlsx", "xls"]:
             return cls.parse_xlsx(file_path)
+        elif source_type == "txt":
+            # Treat TXT files like extracted PDF text
+            with open(file_path, 'r', encoding='utf-8') as f:
+                text = f.read()
+            metadata = {"pages": 1, "file_type": "txt"}
+            # Detect supplier and route to appropriate parser
+            supplier = cls.detect_supplier(text)
+            if supplier == "Iberdrola":
+                return cls.parse_iberdrola_pdf(text, metadata)
+            elif supplier == "Endesa":
+                return cls.parse_endesa_pdf(text, metadata)
+            elif supplier == "Naturgy":
+                return cls.parse_naturgy_pdf(text, metadata)
+            elif supplier in ["Repsol", "Cepsa", "Galp", "Shell", "BP"]:
+                return cls.parse_fuel_pdf(text, metadata, supplier)
+            else:
+                return cls.parse_generic_pdf(text, metadata)
         else:
             # Return empty record
             return UploadRecord(confidence=0.0, meta={"error": "Unsupported file type"})
