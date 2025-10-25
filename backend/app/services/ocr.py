@@ -564,7 +564,8 @@ class DocumentParser:
             elif 'm3' in unit_lower:
                 record.category = DocumentCategory.NATURAL_GAS
                 record.scope = 1
-                record.emission_factor = settings.NATURAL_GAS_FACTOR_KG_PER_KWH
+                # Use IPCC 2006 factor for natural gas: 2.016 kg CO2e per m³
+                record.emission_factor = 2.016
             elif 'l' in unit_lower or 'litros' in unit_lower:
                 record.category = DocumentCategory.FUEL
                 record.scope = 1
