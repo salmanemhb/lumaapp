@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import logging
 from app.config import settings
 from app.routes import auth, files, dashboard, reports
+from agents.data_intake_agent import router as agent1_router
 
 # Configure logging
 logging.basicConfig(
@@ -38,6 +39,9 @@ app.include_router(auth.router, prefix="/api")
 app.include_router(files.router, prefix="/api")
 app.include_router(dashboard.router, prefix="/api")
 app.include_router(reports.router, prefix="/api")
+
+# Agent routers
+app.include_router(agent1_router)
 
 
 @app.on_event("startup")
