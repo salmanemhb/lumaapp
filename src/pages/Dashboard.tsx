@@ -712,7 +712,19 @@ export default function Dashboard() {
                                 <TableRow key={`${index}-details`} className="bg-muted/30 hover:bg-muted/30">
                                   <TableCell colSpan={6} className="p-0">
                                     <div className="px-6 py-4 space-y-4 animate-in slide-in-from-top-2 duration-200">
-                                      {isLoadingDetails ? (
+                                      {file.record_count > 1 ? (
+                                        <div className="text-center py-8 space-y-2">
+                                          <div className="text-lg font-semibold">
+                                            This file contains {file.record_count} invoices
+                                          </div>
+                                          <div className="text-sm text-muted-foreground">
+                                            Total emissions: {file.emissions?.toFixed(2)} kg CO₂e
+                                          </div>
+                                          <div className="text-xs text-muted-foreground">
+                                            Individual invoice details are not shown for batch files
+                                          </div>
+                                        </div>
+                                      ) : isLoadingDetails ? (
                                         <div className="flex items-center justify-center py-8">
                                           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                                         </div>
