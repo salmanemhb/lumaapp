@@ -123,36 +123,40 @@ export default function Dashboard() {
     },
   ];
 
-  // Mock data (used for demo or when no real data available)
-  const monthlyData = dashboardData?.monthly_emissions || [
+  // Use real data or show demo data only for demo user
+  const monthlyData = isDemo ? [
     { month: 'Jan', emissions: 120 },
     { month: 'Feb', emissions: 150 },
     { month: 'Mar', emissions: 135 },
     { month: 'Apr', emissions: 145 },
     { month: 'May', emissions: 160 },
     { month: 'Jun', emissions: 140 },
-  ];
+  ] : (dashboardData?.monthly_emissions || []);
 
-  const scopeData = dashboardData?.scope_breakdown || [
+  const scopeData = isDemo ? [
     { name: t.dashboard.scope1, value: 450, color: 'hsl(var(--sage))' },
     { name: t.dashboard.scope2, value: 320, color: 'hsl(var(--gold))' },
     { name: t.dashboard.scope3, value: 180, color: 'hsl(var(--accent))' },
-  ];
+  ] : (dashboardData?.scope_breakdown || []);
 
-  const recentFiles = uploads.slice(0, 4).map((upload: any) => ({
+  const recentFiles = isDemo ? [
+    { name: 'electricity_bill_june.pdf', status: 'processed', emissions: 45.2, date: '2025-10-22' },
+    { name: 'gas_invoice_june.pdf', status: 'processed', emissions: 32.8, date: '2025-10-22' },
+    { name: 'transport_data.csv', status: 'processing', emissions: null, date: '2025-10-23' },
+  ] : uploads.slice(0, 4).map((upload: any) => ({
     name: upload.file_name,
     status: upload.status,
     emissions: upload.co2e_kg,
     date: upload.uploaded_at,
   }));
 
-  const currentMonthEmissions = dashboardData?.total_emissions_kg || (isDemo ? 950 : 0);
-  const lastMonthEmissions = dashboardData?.last_month_emissions_kg || (isDemo ? 1020 : 0);
+  const currentMonthEmissions = isDemo ? 950 : (dashboardData?.total_emissions_kg || 0);
+  const lastMonthEmissions = isDemo ? 1020 : (dashboardData?.last_month_emissions_kg || 0);
   const percentChange = lastMonthEmissions > 0 
     ? ((currentMonthEmissions - lastMonthEmissions) / lastMonthEmissions * 100).toFixed(1)
     : '0.0';
   const isDecrease = currentMonthEmissions < lastMonthEmissions;
-  const progress = dashboardData?.csrd_readiness_pct || (isDemo ? 78 : 0);
+  const progress = isDemo ? 78 : (dashboardData?.csrd_readiness_pct || 0);
 
   if (authLoading || isLoading) {
     return (

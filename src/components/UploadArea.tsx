@@ -109,7 +109,9 @@ export default function UploadArea() {
     accept: {
       'application/pdf': ['.pdf'],
       'text/csv': ['.csv'],
+      'text/plain': ['.txt'],
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
+      'application/vnd.ms-excel': ['.xls'],
       'image/png': ['.png'],
       'image/jpeg': ['.jpg', '.jpeg'],
     },
