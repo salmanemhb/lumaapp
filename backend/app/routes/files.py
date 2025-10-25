@@ -116,7 +116,30 @@ async def upload_file(
                 upload_record.co2e_kg = parsed_data.co2e_kg
                 upload_record.vat_rate = parsed_data.vat_rate
                 upload_record.confidence = parsed_data.confidence
-                upload_record.meta = str(parsed_data.meta) if parsed_data.meta else None
+                
+                # Store extraction details in meta
+                meta_dict = parsed_data.meta if isinstance(parsed_data.meta, dict) else {}
+                meta_dict['extraction_summary'] = {
+                    'fields_extracted': {
+                        'supplier': bool(parsed_data.supplier),
+                        'invoice_number': bool(parsed_data.invoice_number),
+                        'usage_value': bool(parsed_data.usage_value),
+                        'amount_total': bool(parsed_data.amount_total),
+                        'dates': bool(parsed_data.period_start or parsed_data.issue_date),
+                    },
+                    'missing_fields': [],
+                    'confidence': parsed_data.confidence
+                }
+                
+                # Add missing field warnings
+                if not parsed_data.usage_value:
+                    meta_dict['extraction_summary']['missing_fields'].append('usage_value')
+                if not parsed_data.invoice_number:
+                    meta_dict['extraction_summary']['missing_fields'].append('invoice_number')
+                if not parsed_data.amount_total:
+                    meta_dict['extraction_summary']['missing_fields'].append('amount_total')
+                    
+                upload_record.meta = str(meta_dict)
                 
                 # Set status based on confidence
                 if parsed_data.confidence and parsed_data.confidence >= 0.6:

@@ -719,30 +719,49 @@ export default function Dashboard() {
                                           </div>
                                           <div className="grid gap-3">
                                             {file.records?.map((rec: any, idx: number) => (
-                                              <div key={idx} className="border rounded-lg p-3 bg-background space-y-1">
+                                              <div key={idx} className="border rounded-lg p-3 bg-background space-y-2">
                                                 <div className="flex justify-between items-start">
-                                                  <div className="space-y-1">
+                                                  <div className="space-y-1 flex-1">
                                                     <div className="font-medium text-sm">
                                                       {rec.supplier || 'Unknown Supplier'}
                                                       {rec.invoice_number && <span className="text-muted-foreground ml-2 text-xs">#{rec.invoice_number}</span>}
                                                     </div>
-                                                    {rec.usage_value && (
+                                                    {rec.usage_value ? (
                                                       <div className="text-xs text-muted-foreground">
                                                         {rec.usage_value.toLocaleString()} {rec.usage_unit}
+                                                      </div>
+                                                    ) : (
+                                                      <div className="text-xs text-orange-600">
+                                                        ⚠️ Usage value not extracted
+                                                      </div>
+                                                    )}
+                                                    {rec.amount_total && (
+                                                      <div className="text-xs text-muted-foreground">
+                                                        Amount: €{rec.amount_total.toFixed(2)}
+                                                      </div>
+                                                    )}
+                                                    {rec.category && (
+                                                      <div className="text-xs text-muted-foreground capitalize">
+                                                        Category: {rec.category}
                                                       </div>
                                                     )}
                                                   </div>
                                                   <div className="text-right">
                                                     <div className="font-semibold text-sm">
-                                                      {rec.co2e_kg ? `${rec.co2e_kg.toFixed(2)} kg` : '—'}
+                                                      {rec.co2e_kg ? `${rec.co2e_kg.toFixed(2)} kg` : <span className="text-orange-600">—</span>}
                                                     </div>
                                                     {rec.confidence !== undefined && (
-                                                      <div className="text-xs text-muted-foreground">
+                                                      <div className={`text-xs ${rec.confidence >= 0.7 ? 'text-green-600' : rec.confidence >= 0.5 ? 'text-yellow-600' : 'text-orange-600'}`}>
                                                         {(rec.confidence * 100).toFixed(0)}% confidence
                                                       </div>
                                                     )}
                                                   </div>
                                                 </div>
+                                                {(!rec.usage_value || !rec.co2e_kg) && (
+                                                  <div className="text-xs text-muted-foreground bg-muted/50 p-2 rounded">
+                                                    <span className="font-medium">Extraction issues:</span> Unable to extract {!rec.usage_value && 'usage value'}{!rec.usage_value && !rec.co2e_kg && ', '}{!rec.co2e_kg && 'emissions calculation'}. Manual review needed.
+                                                  </div>
+                                                )}
                                               </div>
                                             ))}
                                           </div>
