@@ -56,7 +56,7 @@ class Settings(BaseSettings):
     
     # File Upload
     MAX_FILE_SIZE_MB: int = 50
-    ALLOWED_EXTENSIONS: str = "pdf,csv,xlsx,jpg,png"
+    ALLOWED_EXTENSIONS: str = "pdf,csv,xlsx,xls,txt,jpg,png"
     
     # Environment
     ENVIRONMENT: str = "development"
