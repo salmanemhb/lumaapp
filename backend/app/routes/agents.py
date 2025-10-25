@@ -1,7 +1,7 @@
 """
 Agent endpoints for n8n workflow integration
 """
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Dict, Any
 import sys
@@ -12,7 +12,6 @@ sys.path.append(str(Path(__file__).parent.parent.parent))
 
 from app.services.ocr import DocumentParser
 from app.config import settings
-from app.auth import get_current_user
 import httpx
 
 router = APIRouter(prefix="/agents", tags=["Agents"])
