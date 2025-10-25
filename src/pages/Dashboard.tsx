@@ -233,13 +233,40 @@ export default function Dashboard() {
     { name: t.dashboard.scope3, value: scope3Total, color: 'hsl(var(--accent))' },
   ] : []);
 
-  const recentFiles = uploads.slice(0, 4).map((upload: any) => ({
-    file_id: upload.file_id,
-    name: upload.file_name,
-    status: upload.status,
-    emissions: upload.co2e_kg,
-    date: upload.uploaded_at,
-  }));
+  // Group uploads by filename and aggregate
+  const groupedUploads = uploads.reduce((acc: any, upload: any) => {
+    const key = upload.file_name;
+    if (!acc[key]) {
+      acc[key] = {
+        file_name: upload.file_name,
+        file_id: upload.file_id,
+        status: upload.status,
+        uploaded_at: upload.uploaded_at,
+        records: [],
+        total_emissions: 0,
+        record_count: 0,
+      };
+    }
+    acc[key].records.push(upload);
+    acc[key].total_emissions += upload.co2e_kg || 0;
+    acc[key].record_count += 1;
+    if (upload.status === 'processing') {
+      acc[key].status = 'processing';
+    }
+    return acc;
+  }, {});
+
+  const recentFiles = Object.values(groupedUploads)
+    .sort((a: any, b: any) => new Date(b.uploaded_at).getTime() - new Date(a.uploaded_at).getTime())
+    .map((group: any) => ({
+      file_id: group.file_id,
+      name: group.file_name,
+      status: group.status,
+      emissions: group.total_emissions,
+      date: group.uploaded_at,
+      record_count: group.record_count,
+      records: group.records,
+    }));
 
   const currentMonthEmissions = hasRealData ? totalEmissions : (showDemoData ? 950 : 0);
   const lastMonthEmissions = showDemoData ? 1020 : (dashboardData?.last_month_emissions_kg || 0);
@@ -571,7 +598,7 @@ export default function Dashboard() {
                 <CardTitle>{t.dashboard.recentUploads}</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="overflow-x-auto">
+                <div className="max-h-[600px] overflow-y-auto overflow-x-auto">
                   <Table>
                     <TableHeader>
                       <TableRow>

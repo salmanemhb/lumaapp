@@ -142,8 +142,8 @@ async def upload_file(
                         # Create new upload records for additional rows/sheets
                         current_upload = Upload(
                             company_id=current_company.id,
-                            file_name=f"{file.filename} (row {idx + 1})",
-                            file_url=file_url,  # Same file URL
+                            file_name=file.filename,
+                            file_url=file_url,
                             source_type=file_ext,
                             status=UploadStatus.PROCESSING
                         )
