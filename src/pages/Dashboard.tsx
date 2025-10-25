@@ -712,7 +712,45 @@ export default function Dashboard() {
                                 <TableRow key={`${index}-details`} className="bg-muted/30 hover:bg-muted/30">
                                   <TableCell colSpan={6} className="p-0">
                                     <div className="px-6 py-4 space-y-4 animate-in slide-in-from-top-2 duration-200">
-                                      {file.record_count > 1 ? (
+                                      {file.record_count > 1 && file.record_count <= 15 ? (
+                                        <div className="space-y-4">
+                                          <div className="text-sm font-semibold text-muted-foreground">
+                                            Showing {file.record_count} invoices from this file:
+                                          </div>
+                                          <div className="grid gap-3">
+                                            {file.records?.map((rec: any, idx: number) => (
+                                              <div key={idx} className="border rounded-lg p-3 bg-background space-y-1">
+                                                <div className="flex justify-between items-start">
+                                                  <div className="space-y-1">
+                                                    <div className="font-medium text-sm">
+                                                      {rec.supplier || 'Unknown Supplier'}
+                                                      {rec.invoice_number && <span className="text-muted-foreground ml-2 text-xs">#{rec.invoice_number}</span>}
+                                                    </div>
+                                                    {rec.usage_value && (
+                                                      <div className="text-xs text-muted-foreground">
+                                                        {rec.usage_value.toLocaleString()} {rec.usage_unit}
+                                                      </div>
+                                                    )}
+                                                  </div>
+                                                  <div className="text-right">
+                                                    <div className="font-semibold text-sm">
+                                                      {rec.co2e_kg ? `${rec.co2e_kg.toFixed(2)} kg` : '—'}
+                                                    </div>
+                                                    {rec.confidence !== undefined && (
+                                                      <div className="text-xs text-muted-foreground">
+                                                        {(rec.confidence * 100).toFixed(0)}% confidence
+                                                      </div>
+                                                    )}
+                                                  </div>
+                                                </div>
+                                              </div>
+                                            ))}
+                                          </div>
+                                          <div className="text-sm font-semibold pt-2 border-t">
+                                            Total: {file.emissions?.toFixed(2)} kg CO₂e
+                                          </div>
+                                        </div>
+                                      ) : file.record_count > 15 ? (
                                         <div className="text-center py-8 space-y-2">
                                           <div className="text-lg font-semibold">
                                             This file contains {file.record_count} invoices
@@ -721,7 +759,7 @@ export default function Dashboard() {
                                             Total emissions: {file.emissions?.toFixed(2)} kg CO₂e
                                           </div>
                                           <div className="text-xs text-muted-foreground">
-                                            Individual invoice details are not shown for batch files
+                                            Individual invoice details are not shown for large batch files ({'>'}15 records)
                                           </div>
                                         </div>
                                       ) : isLoadingDetails ? (

@@ -470,20 +470,129 @@ class DocumentParser:
     @classmethod
     def parse_generic_pdf(cls, text: str, metadata: Dict) -> UploadRecord:
         """Generic PDF parser for unrecognized suppliers"""
+        supplier = cls.detect_supplier(text)
         record = UploadRecord(
-            supplier=cls.detect_supplier(text),
+            supplier=supplier,
             meta=metadata,
             confidence=0.3
         )
         
-        # Try to extract basic info
-        date_match = re.search(r'(\d{2}[\/\-]\d{2}[\/\-]\d{4})', text)
-        if date_match:
-            record.issue_date = cls.parse_spanish_date(date_match.group(1))
+        fields_found = 0
         
-        amount_match = re.search(r'([\d\.\,]+)\s*€', text)
-        if amount_match:
-            record.amount_total = cls.normalize_spanish_number(amount_match.group(1))
+        # Invoice number
+        invoice_patterns = [
+            r'Invoice\s*Number:?\s*([A-Z0-9\-\/\.]+)',
+            r'N[ºo]\s*Factura:?\s*([A-Z0-9\-\/\.]+)',
+            r'Factura:?\s*([A-Z0-9\-\/\.]+)'
+        ]
+        for pattern in invoice_patterns:
+            match = re.search(pattern, text, re.IGNORECASE)
+            if match:
+                record.invoice_number = match.group(1).strip()
+                fields_found += 1
+                break
+        
+        # Date (try multiple formats)
+        date_patterns = [
+            r'Date:?\s*(\d{1,2}[\s\/\-]\w+[\s\/\-]\d{4})',  # 15 de Enero 2025
+            r'Fecha:?\s*(\d{2}[\/\-]\d{2}[\/\-]\d{4})',
+            r'(\d{2}[\/\-]\d{2}[\/\-]\d{4})'
+        ]
+        for pattern in date_patterns:
+            match = re.search(pattern, text, re.IGNORECASE)
+            if match:
+                try:
+                    record.issue_date = cls.parse_spanish_date(match.group(1))
+                    fields_found += 1
+                    break
+                except:
+                    pass
+        
+        # Period
+        period_match = re.search(
+            r'Per[ií]odo:?\s*(\d{2}[\/\-]\d{2}[\/\-]\d{4})\s*[-–]\s*(\d{2}[\/\-]\d{2}[\/\-]\d{4})',
+            text,
+            re.IGNORECASE
+        )
+        if period_match:
+            record.period_start = cls.parse_spanish_date(period_match.group(1))
+            record.period_end = cls.parse_spanish_date(period_match.group(2))
+            fields_found += 1
+        
+        # Try to detect category and extract usage
+        # Electricity
+        if re.search(r'electric|kWh|energ[ií]a', text, re.IGNORECASE):
+            record.category = DocumentCategory.ELECTRICITY
+            record.scope = 2
+            usage_match = re.search(r'([\d\.\,]+)\s*kWh', text, re.IGNORECASE)
+            if usage_match:
+                record.usage_value = cls.normalize_spanish_number(usage_match.group(1))
+                record.usage_unit = "kWh"
+                record.emission_factor = settings.ELECTRICITY_FACTOR_KG_PER_KWH
+                fields_found += 1
+        
+        # Gas
+        elif re.search(r'gas|m³|m3', text, re.IGNORECASE):
+            record.category = DocumentCategory.NATURAL_GAS
+            record.scope = 1
+            usage_match = re.search(r'([\d\.\,]+)\s*m[³3]', text, re.IGNORECASE)
+            if usage_match:
+                record.usage_value = cls.normalize_spanish_number(usage_match.group(1))
+                record.usage_unit = "m3"
+                record.emission_factor = settings.GAS_FACTOR_KG_PER_M3
+                fields_found += 1
+        
+        # Fuel
+        elif re.search(r'diesel|gasolina|combustible|litros?|L\b', text, re.IGNORECASE):
+            record.category = DocumentCategory.FUEL
+            record.scope = 1
+            usage_match = re.search(r'([\d\.\,]+)\s*(Litros|L)\b', text, re.IGNORECASE)
+            if usage_match:
+                record.usage_value = cls.normalize_spanish_number(usage_match.group(1))
+                record.usage_unit = "L"
+                if re.search(r'diesel', text, re.IGNORECASE):
+                    record.emission_factor = settings.DIESEL_FACTOR_KG_PER_L
+                else:
+                    record.emission_factor = settings.GASOLINE_FACTOR_KG_PER_L
+                fields_found += 1
+        
+        # Freight
+        elif re.search(r'transport|freight|env[ií]o|distancia|km', text, re.IGNORECASE):
+            record.category = DocumentCategory.FREIGHT
+            record.scope = 3
+            distance_match = re.search(r'([\d\.\,]+)\s*km', text, re.IGNORECASE)
+            weight_match = re.search(r'([\d\.\,]+)\s*kg', text, re.IGNORECASE)
+            if distance_match and weight_match:
+                distance = cls.normalize_spanish_number(distance_match.group(1))
+                weight = cls.normalize_spanish_number(weight_match.group(1))
+                record.usage_value = distance
+                record.usage_unit = "km"
+                # Simplified freight calculation
+                record.co2e_kg = (distance * weight * 0.00012)  # Rough estimate
+                fields_found += 1
+        
+        # Amount
+        amount_patterns = [
+            r'Total:?\s*([\d\.\,]+)\s*EUR',
+            r'Importe:?\s*([\d\.\,]+)\s*€',
+            r'([\d\.\,]+)\s*EUR',
+            r'([\d\.\,]+)\s*€'
+        ]
+        for pattern in amount_patterns:
+            match = re.search(pattern, text, re.IGNORECASE)
+            if match:
+                record.amount_total = cls.normalize_spanish_number(match.group(1))
+                record.currency = "EUR"
+                fields_found += 1
+                break
+        
+        # Calculate emissions if we have usage and factor
+        if record.usage_value and record.emission_factor and not record.co2e_kg:
+            record.co2e_kg = record.usage_value * record.emission_factor
+            fields_found += 1
+        
+        # Update confidence based on fields found
+        record.confidence = 0.3 + (fields_found / 8) * 0.6  # Max 0.9
         
         return record
     
