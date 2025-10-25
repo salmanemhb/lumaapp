@@ -1,0 +1,154 @@
+{
+  "name": "Luma Upload Processing",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "luma-upload",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "name": "Webhook - File Upload",
+      "type": "n8n-nodes-base.webhook",
+      "position": [240, 300],
+      "webhookId": "WILL_BE_GENERATED",
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "url": "https://luma-final.onrender.com/api/agents/extract",
+        "method": "POST",
+        "authentication": "genericCredentialType",
+        "jsonParameters": true,
+        "options": {},
+        "bodyParametersJson": "={\n  \"upload_id\": \"{{$json.upload_id}}\",\n  \"company_id\": \"{{$json.company_id}}\"\n}"
+      },
+      "name": "Agent 1 - Extract Data",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [460, 300],
+      "typeVersion": 3
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{$json.confidence_score}}",
+              "operation": "smaller",
+              "value2": 0.7
+            }
+          ]
+        }
+      },
+      "name": "IF Confidence Check",
+      "type": "n8n-nodes-base.if",
+      "position": [680, 300],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "url": "https://luma-final.onrender.com/api/agents/flag-review",
+        "method": "POST",
+        "jsonParameters": true,
+        "options": {},
+        "bodyParametersJson": "={\n  \"upload_id\": \"{{$json.upload_id}}\",\n  \"confidence\": {{$json.confidence_score}},\n  \"reason\": \"Low confidence extraction\"\n}"
+      },
+      "name": "Agent 6 - Flag for Review",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [900, 420],
+      "typeVersion": 3
+    },
+    {
+      "parameters": {
+        "url": "https://luma-final.onrender.com/api/agents/calculate",
+        "method": "POST",
+        "jsonParameters": true,
+        "options": {},
+        "bodyParametersJson": "={\n  \"upload_id\": \"{{$json.upload_id}}\"\n}"
+      },
+      "name": "Agent 2 - Calculate Emissions",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [900, 180],
+      "typeVersion": 3
+    },
+    {
+      "parameters": {
+        "fromEmail": "noreply@getluma.es",
+        "toEmail": "={{$json.user_email}}",
+        "subject": "Invoice Processed - {{$json.filename}}",
+        "emailType": "html",
+        "message": "<h2>✅ Invoice Processing Complete</h2>\n<p><strong>File:</strong> {{$json.filename}}</p>\n<p><strong>Supplier:</strong> {{$json.supplier}}</p>\n<p><strong>Emissions:</strong> {{$json.co2e_kg}} kg CO₂e</p>\n<p><strong>Confidence:</strong> {{$json.confidence_score}}%</p>\n<hr>\n<p><a href=\"https://getluma.es/dashboard\">View Dashboard</a></p>"
+      },
+      "name": "Agent 8 - Send Notification",
+      "type": "n8n-nodes-base.emailSend",
+      "position": [1120, 180],
+      "typeVersion": 2,
+      "credentials": {
+        "smtp": {
+          "id": "1",
+          "name": "Gmail SMTP"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook - File Upload": {
+      "main": [
+        [
+          {
+            "node": "Agent 1 - Extract Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agent 1 - Extract Data": {
+      "main": [
+        [
+          {
+            "node": "IF Confidence Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Confidence Check": {
+      "main": [
+        [
+          {
+            "node": "Agent 2 - Calculate Emissions",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Agent 6 - Flag for Review",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agent 2 - Calculate Emissions": {
+      "main": [
+        [
+          {
+            "node": "Agent 8 - Send Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 1,
+  "updatedAt": "2025-10-25T00:00:00.000Z",
+  "versionId": "1"
+}

@@ -62,6 +62,10 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = "development"
     DEBUG: bool = True
     
+    # n8n Integration
+    N8N_WEBHOOK_URL: str = ""  # Will be set after n8n deployment
+    N8N_WEBHOOK_SECRET: str = ""  # Optional webhook authentication
+    
     @property
     def allowed_origins_list(self) -> List[str]:
         """Parse comma-separated origins into list"""

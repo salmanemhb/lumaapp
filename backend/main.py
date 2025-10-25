@@ -6,7 +6,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import logging
 from app.config import settings
-from app.routes import auth, files, dashboard, reports
+from app.routes import auth, files, dashboard, reports, agents
 from agents.data_intake_agent import router as agent1_router
 
 # Configure logging
@@ -39,6 +39,7 @@ app.include_router(auth.router, prefix="/api")
 app.include_router(files.router, prefix="/api")
 app.include_router(dashboard.router, prefix="/api")
 app.include_router(reports.router, prefix="/api")
+app.include_router(agents.router, prefix="/api")  # n8n agent endpoints
 
 # Agent routers
 app.include_router(agent1_router)
