@@ -8,7 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
 import UploadArea from '@/components/UploadArea';
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { LogOut, FileText, Mail, Download, TrendingUp, TrendingDown, Calendar, Loader2 } from 'lucide-react';
+import { LogOut, FileText, Mail, Download, TrendingUp, TrendingDown, Calendar, Loader2, Trash2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useTranslation } from '@/lib/i18n';
@@ -104,6 +104,39 @@ export default function Dashboard() {
     toast.success(t.dashboard.reportReady);
   };
 
+  const handleDeleteFile = async (fileId: string, fileName: string) => {
+    if (!confirm(`Delete ${fileName}? This cannot be undone.`)) return;
+    
+    try {
+      const token = localStorage.getItem('luma_auth_token');
+      const response = await fetch(`${API_URL}/api/files/uploads/${fileId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        toast.success('File deleted successfully');
+        // Refresh uploads list
+        setUploads(prev => prev.filter((u: any) => u.file_id !== fileId));
+        // Also refresh dashboard data
+        const dashboardResponse = await fetch(`${API_URL}/api/dashboard`, {
+          headers: { 'Authorization': `Bearer ${token}` },
+        });
+        if (dashboardResponse.ok) {
+          const data = await dashboardResponse.json();
+          setDashboardData(data);
+        }
+      } else {
+        toast.error('Failed to delete file');
+      }
+    } catch (error) {
+      console.error('Delete error:', error);
+      toast.error('Failed to delete file');
+    }
+  };
+
   const steps: Step[] = [
     {
       target: '.upload-section',
@@ -154,6 +187,7 @@ export default function Dashboard() {
   ] : []);
 
   const recentFiles = uploads.slice(0, 4).map((upload: any) => ({
+    file_id: upload.file_id,
     name: upload.file_name,
     status: upload.status,
     emissions: upload.co2e_kg,
@@ -498,6 +532,7 @@ export default function Dashboard() {
                         <TableHead>{t.dashboard.status}</TableHead>
                         <TableHead className="text-right">{t.dashboard.emissions}</TableHead>
                         <TableHead className="text-right">{t.dashboard.uploaded}</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -526,11 +561,21 @@ export default function Dashboard() {
                                 day: 'numeric',
                               }) : '—'}
                             </TableCell>
+                            <TableCell className="text-right">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleDeleteFile(file.file_id || uploads[index]?.file_id, file.name)}
+                                className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </TableCell>
                           </TableRow>
                         ))
                       ) : (
                         <TableRow>
-                          <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
+                          <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
                             No uploads yet. Upload your first file to get started!
                           </TableCell>
                         </TableRow>
